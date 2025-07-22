@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavLink } from "react-router-dom";
 import { 
   Building2, 
   Users, 
@@ -12,7 +13,8 @@ import {
   Calendar,
   MessageSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +22,7 @@ const menuItems = [
   { 
     name: "Dashboard", 
     icon: Home, 
-    path: "/", 
-    active: true 
+    path: "/" 
   },
   { 
     name: "Properties", 
@@ -34,14 +35,14 @@ const menuItems = [
     path: "/leads" 
   },
   { 
+    name: "Clients", 
+    icon: UserCheck, 
+    path: "/clients" 
+  },
+  { 
     name: "Analytics", 
     icon: BarChart3, 
     path: "/analytics" 
-  },
-  { 
-    name: "Locations", 
-    icon: MapPin, 
-    path: "/locations" 
   },
   { 
     name: "Reports", 
@@ -117,18 +118,18 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (
-              <a
+              <NavLink
                 key={item.name}
-                href={item.path}
-                className={cn(
+                to={item.path}
+                className={({ isActive }) => cn(
                   "nav-link",
-                  item.active && "active"
+                  isActive && "active"
                 )}
                 title={isCollapsed ? item.name : undefined}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 {!isCollapsed && <span>{item.name}</span>}
-              </a>
+              </NavLink>
             );
           })}
         </div>
@@ -159,14 +160,17 @@ export default function Sidebar() {
 
       {/* Settings */}
       <div className="p-4 border-t border-sidebar-border">
-        <a
-          href="/settings"
-          className="nav-link"
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => cn(
+            "nav-link",
+            isActive && "active"
+          )}
           title={isCollapsed ? "Settings" : undefined}
         >
           <Settings className="w-5 h-5 flex-shrink-0" />
           {!isCollapsed && <span>Settings</span>}
-        </a>
+        </NavLink>
       </div>
     </div>
   );
