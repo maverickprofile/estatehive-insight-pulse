@@ -1,15 +1,21 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MapPin, Eye, Edit } from "lucide-react";
+import { MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface PropertyCardProps {
+type PropertyCardProps = {
   image: string;
   title: string;
   location: string;
   price: string;
-  status: "active" | "sold" | "rented";
-  type: "sale" | "rent";
-}
+  status?: "active" | "sold" | "rented" | null;
+  type?: "sale" | "rent" | null;
+};
+
+const statusColors = {
+  active: "bg-success text-success-foreground",
+  sold: "bg-destructive text-destructive-foreground",
+  rented: "bg-accent text-accent-foreground",
+};
 
 export default function PropertyCard({
   image,
@@ -17,54 +23,38 @@ export default function PropertyCard({
   location,
   price,
   status,
-  type
+  type,
 }: PropertyCardProps) {
-  const statusColors = {
-    active: "bg-success text-success-foreground",
-    sold: "bg-destructive text-destructive-foreground",
-    rented: "bg-accent text-accent-foreground"
-  };
-
-  const typeColors = {
-    sale: "bg-primary text-primary-foreground",
-    rent: "bg-secondary text-secondary-foreground"
-  };
+  // Helper to safely capitalize strings
+  const capitalize = (s: string | null | undefined) => {
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
 
   return (
-    <div className="property-card">
-      <div className="relative mb-3">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-40 object-cover rounded-lg"
-        />
-        <div className="absolute top-2 left-2 flex gap-2">
-          <Badge className={statusColors[status]} variant="secondary">
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </Badge>
-          <Badge className={typeColors[type]} variant="secondary">
-            For {type.charAt(0).toUpperCase() + type.slice(1)}
-          </Badge>
+    <div className="flex items-center gap-4 p-3 rounded-lg bg-background/50 hover:bg-background transition-colors">
+      <img
+        src={image}
+        alt={title}
+        className="w-20 h-20 rounded-lg object-cover"
+      />
+      <div className="flex-1">
+        <h4 className="font-semibold text-foreground">{title}</h4>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+          <MapPin className="w-4 h-4" />
+          <span>{location}</span>
         </div>
-      </div>
-      
-      <div className="space-y-2">
-        <h3 className="font-semibold text-foreground leading-tight">{title}</h3>
-        
-        <div className="flex items-center text-muted-foreground text-sm">
-          <MapPin className="w-4 h-4 mr-1" />
-          {location}
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-bold text-primary">{price}</span>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="sm">
-              <Eye className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Edit className="w-4 h-4" />
-            </Button>
+        <div className="flex items-center justify-between mt-2">
+          <p className="font-bold text-primary">{price}</p>
+          <div className="flex items-center gap-2">
+            {status && (
+                <Badge className={cn(statusColors[status])} variant="secondary">
+                    {capitalize(status)}
+                </Badge>
+            )}
+            {type && (
+                <Badge variant="outline">{capitalize(type)}</Badge>
+            )}
           </div>
         </div>
       </div>

@@ -122,3 +122,12 @@
     @apply bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md;
   }
 }
+
+/* globals.css */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

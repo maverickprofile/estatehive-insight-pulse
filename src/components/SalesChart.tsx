@@ -1,40 +1,50 @@
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 
-const data = [
-  { month: "Jan", sales: 2400000, target: 2000000 },
-  { month: "Feb", sales: 1800000, target: 2200000 },
-  { month: "Mar", sales: 3200000, target: 2400000 },
-  { month: "Apr", sales: 2800000, target: 2600000 },
-  { month: "May", sales: 3800000, target: 2800000 },
-  { month: "Jun", sales: 3400000, target: 3000000 },
-  { month: "Jul", sales: 4200000, target: 3200000 },
-  { month: "Aug", sales: 3900000, target: 3400000 },
-  { month: "Sep", sales: 4800000, target: 3600000 },
-  { month: "Oct", sales: 4500000, target: 3800000 },
-  { month: "Nov", sales: 5200000, target: 4000000 },
-  { month: "Dec", sales: 5800000, target: 4200000 },
+// Admin dashboard chart data
+const salesData = [
+  { month: "Aug '24", revenue: 2800000, propertiesSold: 5, newLeads: 120 },
+  { month: "Sep '24", revenue: 3500000, propertiesSold: 7, newLeads: 140 },
+  { month: "Oct '24", revenue: 3200000, propertiesSold: 6, newLeads: 130 },
+  { month: "Nov '24", revenue: 4100000, propertiesSold: 8, newLeads: 160 },
+  { month: "Dec '24", revenue: 5500000, propertiesSold: 11, newLeads: 180 },
+  { month: "Jan '25", revenue: 4800000, propertiesSold: 9, newLeads: 170 },
+  { month: "Feb '25", revenue: 4500000, propertiesSold: 8, newLeads: 165 },
+  { month: "Mar '25", revenue: 6000000, propertiesSold: 12, newLeads: 200 },
+  { month: "Apr '25", revenue: 5800000, propertiesSold: 11, newLeads: 190 },
+  { month: "May '25", revenue: 6500000, propertiesSold: 14, newLeads: 220 },
+  { month: "Jun '25", revenue: 7200000, propertiesSold: 15, newLeads: 240 },
+  { month: "Jul '25", revenue: 6800000, propertiesSold: 13, newLeads: 230 },
 ];
 
+// Format for Y-axis currency labels
 const formatCurrency = (value: number) => {
-  return `₹${(value / 100000).toFixed(1)}L`;
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+  return `₹${value.toLocaleString()}`;
 };
 
+// Dark theme custom tooltip
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-medium text-foreground">{label}</p>
+      <div className="bg-[#1f1f1f]/90 border border-border backdrop-blur-md rounded-md p-3 shadow-md text-white">
+        <p className="font-semibold mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className={`text-sm`} style={{ color: entry.color }}>
-            {entry.name}: {formatCurrency(entry.value)}
+          <p key={index} className="text-sm" style={{ color: entry.stroke }}>
+            {entry.name}: {
+              entry.dataKey === "revenue"
+                ? `₹${entry.value.toLocaleString()}`
+                : entry.value
+            }
           </p>
         ))}
       </div>
@@ -45,47 +55,68 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function SalesChart() {
   return (
-    <div className="metric-card h-80">
+    <div className="metric-card h-96 bg-[#121212] text-white border border-border rounded-lg p-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-foreground">Monthly Sales Trend</h3>
-        <p className="text-sm text-muted-foreground">Sales vs Target (₹ Lakhs)</p>
+        <h3 className="text-lg font-semibold">Monthly Performance Overview</h3>
+        <p className="text-sm text-gray-400">Revenue, properties sold, and new leads generated per month.</p>
       </div>
-      
-      <ResponsiveContainer width="100%" height={240}>
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="month" 
+
+      <ResponsiveContainer width="100%" height={300}>
+        <AreaChart data={salesData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+          <defs>
+            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.5} />
+              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#22c55e" stopOpacity={0.5} />
+              <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis
+            dataKey="month"
             axisLine={false}
             tickLine={false}
-            className="text-muted-foreground"
+            tick={{ fill: "#d1d5db", fontSize: 12 }}
+            dy={10}
           />
-          <YAxis 
+          <YAxis
+            yAxisId="left"
             axisLine={false}
             tickLine={false}
             tickFormatter={formatCurrency}
-            className="text-muted-foreground"
+            tick={{ fill: "#d1d5db", fontSize: 12 }}
+          />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "#d1d5db", fontSize: 12 }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Line
+          <Legend wrapperStyle={{ color: "white", paddingTop: "20px" }} />
+          <Area
+            yAxisId="left"
             type="monotone"
-            dataKey="sales"
-            stroke="hsl(var(--primary))"
-            strokeWidth={3}
-            dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
-            activeDot={{ r: 8, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
-            name="Sales"
-          />
-          <Line
-            type="monotone"
-            dataKey="target"
-            stroke="hsl(var(--accent))"
+            dataKey="revenue"
+            stroke="#3b82f6"
+            fill="url(#colorRevenue)"
             strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ fill: "hsl(var(--accent))", strokeWidth: 2, r: 4 }}
-            name="Target"
+            name="Revenue (₹)"
           />
-        </LineChart>
+          <Area
+            yAxisId="right"
+            type="monotone"
+            dataKey="newLeads"
+            stroke="#22c55e"
+            fill="url(#colorLeads)"
+            strokeWidth={2}
+            name="New Leads"
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

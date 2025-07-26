@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { 
   Building2, 
   Users, 
   TrendingUp, 
-  MapPin, 
   FileText, 
   Settings, 
   BarChart3,
@@ -14,9 +13,11 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import estateHiveLogo from '/favicon_eh.png'; // Make sure to add your logo to this path
 
 const menuItems = [
   { 
@@ -55,6 +56,11 @@ const menuItems = [
     path: "/calendar" 
   },
   { 
+    name: "AI Tools", 
+    icon: Bot, 
+    path: "/ai-tools" 
+  },
+  { 
     name: "Messages", 
     icon: MessageSquare, 
     path: "/messages" 
@@ -65,52 +71,82 @@ const quickActions = [
   { 
     name: "Add Property", 
     icon: PlusCircle, 
-    color: "text-primary" 
+    color: "text-primary",
+    action: 'add_property'
   },
   { 
     name: "Add Lead", 
     icon: Users, 
-    color: "text-accent" 
+    color: "text-accent",
+    action: 'add_lead'
   },
   { 
     name: "View Analytics", 
     icon: TrendingUp, 
-    color: "text-success" 
+    color: "text-success",
+    action: 'view_analytics'
   },
 ];
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const navigate = useNavigate();
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'add_property':
+        navigate('/properties/new');
+        break;
+      case 'add_lead':
+        navigate('/leads');
+        break;
+      case 'view_analytics':
+        navigate('/analytics');
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className={cn(
       "bg-sidebar border-r border-sidebar-border h-screen flex flex-col transition-all duration-300",
-      isCollapsed ? "w-16" : "w-64"
+      isCollapsed ? "w-20" : "w-64"
     )}>
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img src={estateHiveLogo} alt="Estate Hive Logo" className="w-8 h-8 rounded-lg" />
             <div>
-              <h1 className="font-bold text-sidebar-foreground">Estate CRM</h1>
-              <p className="text-xs text-muted-foreground">Property Management</p>
+              <h1 className="font-bold text-sidebar-foreground">Estate Hive</h1>
+              <p className="text-xs text-muted-foreground">powered by HiveX</p>
             </div>
+          </div>
+        )}
+         {isCollapsed && (
+          <div className="flex items-center justify-center w-full">
+            <img src={estateHiveLogo} alt="Estate Hive Logo" className="w-8 h-8 rounded-lg" />
           </div>
         )}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors"
+          className={cn("p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors", isCollapsed && "hidden")}
         >
-          {isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-sidebar-foreground" />
-          ) : (
             <ChevronLeft className="w-4 h-4 text-sidebar-foreground" />
-          )}
         </button>
       </div>
+       {isCollapsed && (
+        <div className="p-4 border-b border-sidebar-border">
+             <button 
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors w-full flex justify-center"
+            >
+                <ChevronRight className="w-4 h-4 text-sidebar-foreground" />
+            </button>
+        </div>
+      )}
+
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
@@ -122,8 +158,10 @@ export default function Sidebar() {
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) => cn(
-                  "nav-link",
-                  isActive && "active"
+                  "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
+                  "text-sidebar-foreground hover:bg-sidebar-accent",
+                  isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+                  isCollapsed && "justify-center"
                 )}
                 title={isCollapsed ? item.name : undefined}
               >
@@ -137,7 +175,7 @@ export default function Sidebar() {
         {/* Quick Actions */}
         {!isCollapsed && (
           <div className="pt-6">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
               Quick Actions
             </h3>
             <div className="space-y-1">
@@ -146,6 +184,7 @@ export default function Sidebar() {
                 return (
                   <button
                     key={action.name}
+                    onClick={() => handleQuickAction(action.action)}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
                   >
                     <Icon className={cn("w-4 h-4", action.color)} />
@@ -159,12 +198,14 @@ export default function Sidebar() {
       </nav>
 
       {/* Settings */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border mt-auto">
         <NavLink
           to="/settings"
           className={({ isActive }) => cn(
-            "nav-link",
-            isActive && "active"
+            "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
+            "text-sidebar-foreground hover:bg-sidebar-accent",
+            isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+            isCollapsed && "justify-center"
           )}
           title={isCollapsed ? "Settings" : undefined}
         >

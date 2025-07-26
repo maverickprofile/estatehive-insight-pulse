@@ -3,11 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Plus, 
   Phone, 
   Mail, 
   MapPin, 
-  Calendar,
   User,
   Building,
   IndianRupee,
@@ -98,14 +112,15 @@ const leads = [
   }
 ];
 
-const priorityColors = {
+const priorityColors: { [key: string]: string } = {
   high: "bg-destructive text-destructive-foreground",
-  medium: "bg-warning text-warning-foreground",
+  medium: "bg-yellow-500 text-white",
   low: "bg-muted text-muted-foreground"
 };
 
 export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
 
   const filteredLeads = leads.filter(lead =>
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -118,120 +133,88 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Leads Management</h1>
-          <p className="text-muted-foreground">Track and manage your sales pipeline</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Leads Management</h1>
+          <p className="text-sm text-muted-foreground">Track and manage your sales pipeline</p>
         </div>
-        <div className="flex gap-2">
-          <Button className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
-        </div>
+        <Button 
+          className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+          onClick={() => setIsAddLeadModalOpen(true)}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Lead
+        </Button>
       </div>
 
       {/* Search and Filters */}
-      <div className="metric-card">
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      <div className="bg-card p-4 rounded-lg border border-border">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative flex-grow w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search leads..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
-          <Button variant="outline">Import Leads</Button>
-          <Button variant="outline">Export</Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1">Import</Button>
+            <Button variant="outline" className="flex-1">Export</Button>
+          </div>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="flex gap-6 overflow-x-auto pb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6">
         {leadStages.map((stage) => {
           const stageLeads = getLeadsByStage(stage.id);
           return (
-            <div key={stage.id} className="min-w-[320px] flex-shrink-0">
-              <div className="metric-card">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-3 h-3 rounded-full", stage.color)} />
-                    <h3 className="font-semibold text-foreground">{stage.title}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {stageLeads.length}
-                    </Badge>
+            <div key={stage.id}>
+              <div className="bg-card rounded-lg border border-border h-full flex flex-col">
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-3 h-3 rounded-full", stage.color)} />
+                      <h3 className="font-semibold text-foreground">{stage.title}</h3>
+                      <Badge variant="secondary" className="text-xs">{stageLeads.length}</Badge>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Plus className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Plus className="w-4 h-4" />
-                  </Button>
                 </div>
-
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="p-4 space-y-4 flex-1 overflow-y-auto">
                   {stageLeads.map((lead) => (
-                    <div key={lead.id} className="property-card p-4">
+                    <div key={lead.id} className="bg-background p-4 rounded-lg border border-border">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="font-semibold text-foreground">{lead.name}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className={priorityColors[lead.priority as keyof typeof priorityColors]} variant="secondary">
-                              {lead.priority}
-                            </Badge>
-                          </div>
+                          <Badge className={cn("mt-1 capitalize", priorityColors[lead.priority])}>
+                            {lead.priority}
+                          </Badge>
                         </div>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </div>
-
                       <div className="space-y-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          <span>{lead.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4" />
-                          <span className="truncate">{lead.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4" />
-                          <span>{lead.interest}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4" />
-                          <span>{lead.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <IndianRupee className="w-4 h-4" />
-                          <span>{lead.budget}</span>
-                        </div>
+                        <div className="flex items-center gap-2"><Phone className="w-4 h-4 flex-shrink-0" /> <span>{lead.phone}</span></div>
+                        <div className="flex items-center gap-2"><Mail className="w-4 h-4 flex-shrink-0" /> <span className="truncate">{lead.email}</span></div>
+                        <div className="flex items-center gap-2"><Building className="w-4 h-4 flex-shrink-0" /> <span>{lead.interest}</span></div>
+                        <div className="flex items-center gap-2"><MapPin className="w-4 h-4 flex-shrink-0" /> <span>{lead.location}</span></div>
+                        <div className="flex items-center gap-2"><IndianRupee className="w-4 h-4 flex-shrink-0" /> <span>{lead.budget}</span></div>
                       </div>
-
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <User className="w-3 h-3" />
-                          <span>{lead.agent}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{lead.lastContact}</span>
-                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground"><User className="w-3 h-3" /><span>{lead.agent}</span></div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="w-3 h-3" /><span>{lead.lastContact}</span></div>
                       </div>
-
                       <div className="flex gap-2 mt-3">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Phone className="w-3 h-3 mr-1" />
-                          Call
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          <Mail className="w-3 h-3 mr-1" />
-                          Email
-                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1"><Phone className="w-3 h-3 mr-1" /> Call</Button>
+                        <Button variant="outline" size="sm" className="flex-1"><Mail className="w-3 h-3 mr-1" /> Email</Button>
                       </div>
                     </div>
                   ))}
@@ -243,11 +226,11 @@ export default function LeadsPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {leadStages.map((stage) => {
           const count = getLeadsByStage(stage.id).length;
           return (
-            <div key={stage.id} className="metric-card text-center">
+            <div key={stage.id} className="bg-card p-4 rounded-lg border border-border text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <div className={cn("w-3 h-3 rounded-full", stage.color)} />
                 <span className="text-sm font-medium text-foreground">{stage.title}</span>
@@ -257,6 +240,57 @@ export default function LeadsPage() {
           );
         })}
       </div>
+
+      {/* Add Lead Modal */}
+      <Dialog open={isAddLeadModalOpen} onOpenChange={setIsAddLeadModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+            <DialogDescription>
+              Fill in the details for the new lead. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="name" className="text-right">Name</label>
+              <Input id="name" placeholder="e.g., Rajesh Kumar" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="phone" className="text-right">Phone</label>
+              <Input id="phone" placeholder="e.g., +91 98765 43210" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="email" className="text-right">Email</label>
+              <Input id="email" type="email" placeholder="e.g., rajesh.k@email.com" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="interest" className="text-right">Interest</label>
+              <Input id="interest" placeholder="e.g., 3BHK Apartment" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="budget" className="text-right">Budget</label>
+              <Input id="budget" placeholder="e.g., ₹80L - ₹1.2Cr" className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="stage" className="text-right">Stage</label>
+              <Select>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">New Lead</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="site-visit">Site Visit</SelectItem>
+                  <SelectItem value="negotiation">Negotiation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit">Save Lead</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
