@@ -19,7 +19,6 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from 'date-fns';
 
 const leadStages = [
   { id: "new", title: "New Leads", color: "bg-blue-500" },
@@ -96,56 +95,51 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {/* Kanban Board - Row Based */}
+      {/* Kanban Board */}
       {isLoading ? (
           <div className="flex justify-center items-center h-96">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
       ) : (
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-6">
             {leadStages.map((stage) => {
-                const stageLeads = getLeadsByStage(stage.id);
-                return (
-                    <div key={stage.id}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className={cn("w-3 h-3 rounded-full", stage.color)} />
-                            <h3 className="font-semibold text-foreground text-lg">{stage.title}</h3>
-                            <Badge variant="secondary" className="text-xs">{stageLeads.length}</Badge>
-                        </div>
-                        <div className="flex gap-4 overflow-x-auto pb-4">
-                            {stageLeads.map((lead) => (
-                                <div key={lead.id} className="min-w-[280px] w-[280px] bg-card p-4 rounded-lg border border-border flex-shrink-0 flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div>
-                                                <h4 className="font-semibold text-foreground">{lead.name}</h4>
-                                                <Badge className={cn("mt-1 capitalize", priorityColors[lead.priority as keyof typeof priorityColors])}>
-                                                    {lead.priority}
-                                                </Badge>
-                                            </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                        <div className="space-y-2 text-sm text-muted-foreground border-t pt-3">
-                                            <div className="flex items-center gap-2"><Phone className="w-4 h-4 flex-shrink-0" /> <span>{lead.phone || 'N/A'}</span></div>
-                                            <div className="flex items-center gap-2"><Mail className="w-4 h-4 flex-shrink-0" /> <span className="truncate">{lead.email || 'N/A'}</span></div>
-                                            <div className="flex items-center gap-2"><Building className="w-4 h-4 flex-shrink-0" /> <span>{lead.interest || 'N/A'}</span></div>
-                                            <div className="flex items-center gap-2"><IndianRupee className="w-4 h-4 flex-shrink-0" /> <span>{lead.budget || 'N/A'}</span></div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-4 pt-3 border-t">
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground"><User className="w-3 h-3" /><span>{lead.agent || 'Unassigned'}</span></div>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Clock className="w-3 h-3" /><span>{lead.last_contact ? format(new Date(lead.last_contact), 'PP') : 'N/A'}</span></div>
-                                    </div>
-                                </div>
-                            ))}
-                             {stageLeads.length === 0 && (
-                                <div className="text-center text-muted-foreground py-10 w-full">No leads in this stage.</div>
-                            )}
+            const stageLeads = getLeadsByStage(stage.id);
+            return (
+                <div key={stage.id}>
+                <div className="bg-card rounded-lg border border-border h-full flex flex-col">
+                    <div className="p-4 border-b border-border">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                        <div className={cn("w-3 h-3 rounded-full", stage.color)} />
+                        <h3 className="font-semibold text-foreground">{stage.title}</h3>
+                        <Badge variant="secondary" className="text-xs">{stageLeads.length}</Badge>
                         </div>
                     </div>
-                );
+                    </div>
+                    <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+                    {stageLeads.map((lead) => (
+                        <div key={lead.id} className="bg-background p-4 rounded-lg border border-border">
+                        <div className="flex items-start justify-between mb-3">
+                            <div>
+                            <h4 className="font-semibold text-foreground">{lead.name}</h4>
+                            <Badge className={cn("mt-1 capitalize", priorityColors[lead.priority as keyof typeof priorityColors])}>
+                                {lead.priority}
+                            </Badge>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="w-4 h-4" />
+                            </Button>
+                        </div>
+                        <div className="space-y-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2"><Phone className="w-4 h-4 flex-shrink-0" /> <span>{lead.phone}</span></div>
+                            <div className="flex items-center gap-2"><Mail className="w-4 h-4 flex-shrink-0" /> <span className="truncate">{lead.email}</span></div>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </div>
+            );
             })}
         </div>
       )}

@@ -9,17 +9,22 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // Page Imports
 import Index from "./pages/Index";
-import Properties from "./pages/PropertiesLayout";
-import AddProperty from "./pages/AddPropertyLayout";
-import PropertyDetails from "./pages/PropertyDetailsLayout"; // New import
-import Leads from "./pages/LeadsLayout";
-import Clients from "./pages/ClientsLayout";
-import Analytics from "./pages/AnalyticsLayout";
-import Settings from "./pages/SettingsLayout";
-import Calendar from "./pages/CalendarLayout";
-import AiTools from "./pages/AiToolsLayout";
-import Messages from "./pages/MessagesLayout";
-import Profile from "./pages/ProfileLayout";
+import PropertiesLayout from "./pages/PropertiesLayout";
+import AddPropertyLayout from "./pages/AddPropertyLayout";
+import PropertyDetailsLayout from "./pages/PropertyDetailsLayout";
+import LeadsLayout from "./pages/LeadsLayout";
+import CreateLeadLayout from "./pages/CreateLeadLayout"; // New import
+import ClientsLayout from "./pages/ClientsLayout";
+import AnalyticsLayout from "./pages/AnalyticsLayout";
+import SettingsLayout from "./pages/SettingsLayout";
+import CalendarLayout from "./pages/CalendarLayout";
+import AiToolsLayout from "./pages/AiToolsLayout";
+import MessagesLayout from "./pages/MessagesLayout";
+import ProfileLayout from "./pages/ProfileLayout";
+import InvoicesLayout from "./pages/InvoicesLayout";
+import InvoicesPage from "./pages/Invoices";
+import CreateInvoicePage from "./pages/CreateInvoice";
+import InvoiceDetailsPage from "./pages/InvoiceDetails";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
@@ -64,18 +69,27 @@ const App = () => {
             // Routes accessible only when the user is logged in
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/properties/new" element={<AddProperty />} />
-              <Route path="/properties/:id" element={<PropertyDetails />} /> {/* New Route */}
-              <Route path="/leads" element={<Leads />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/reports" element={<Analytics />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/ai-tools" element={<AiTools />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route path="/properties" element={<PropertiesLayout />} />
+              <Route path="/properties/new" element={<AddPropertyLayout />} />
+              <Route path="/properties/:id" element={<PropertyDetailsLayout />} />
+              <Route path="/leads" element={<LeadsLayout />} />
+              <Route path="/leads/new" element={<CreateLeadLayout />} /> {/* New Route */}
+              <Route path="/clients" element={<ClientsLayout />} />
+              <Route path="/analytics" element={<AnalyticsLayout />} />
+              <Route path="/reports" element={<AnalyticsLayout />} />
+              <Route path="/settings" element={<SettingsLayout />} />
+              <Route path="/calendar" element={<CalendarLayout />} />
+              <Route path="/ai-tools" element={<AiToolsLayout />} />
+              <Route path="/messages" element={<MessagesLayout />} />
+              <Route path="/profile" element={<ProfileLayout />} />
+              
+              {/* New Invoice Routes */}
+              <Route path="/invoices" element={<InvoicesLayout />}>
+                <Route index element={<InvoicesPage />} />
+                <Route path="new" element={<CreateInvoicePage />} />
+                <Route path=":id" element={<InvoiceDetailsPage />} />
+              </Route>
+
               {/* If a logged-in user tries to visit /auth, redirect them to the dashboard */}
               <Route path="/auth" element={<Navigate to="/" />} />
               <Route path="*" element={<NotFound />} />

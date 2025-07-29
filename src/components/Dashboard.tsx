@@ -133,6 +133,7 @@ export default function Dashboard() {
 
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         {/* Recently Added Properties */}
         <div className="bg-white rounded-xl shadow p-6">
   {/* Header */}
