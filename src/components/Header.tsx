@@ -73,7 +73,9 @@ export default function Header() {
     const channel = supabase.channel(`notifications:${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
-          console.log('New notification received!', payload);
+          if (import.meta.env.DEV) {
+            console.debug('New notification received!', payload);
+          }
           queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
           toast({
               title: "New Notification",
