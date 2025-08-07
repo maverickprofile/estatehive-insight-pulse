@@ -12,15 +12,31 @@ import { Loader2, ArrowLeft, Edit, Save, MapPin, Building, Home, Store, BedDoubl
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from '@/lib/utils';
 
+interface Property {
+    id: string;
+    title?: string;
+    location?: string;
+    price?: number;
+    status?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    parking_spots?: number;
+    size?: string;
+    image_urls?: string[];
+    agent?: string;
+    amenities?: string[] | string;
+    description?: string;
+}
+
 // Function to fetch a single property from Supabase
-const fetchPropertyById = async (id: string) => {
+const fetchPropertyById = async (id: string): Promise<Property> => {
   const { data, error } = await supabase
     .from('properties')
     .select('*')
     .eq('id', id)
     .single();
   if (error) throw new Error(error.message);
-  return data;
+  return data as Property;
 };
 
 export default function PropertyDetailsPage() {
@@ -31,10 +47,10 @@ export default function PropertyDetailsPage() {
     const { toast } = useToast();
 
     const [isEditing, setIsEditing] = useState(searchParams.get('edit') === 'true');
-    const [propertyData, setPropertyData] = useState<any>(null);
+    const [propertyData, setPropertyData] = useState<Property | null>(null);
     const [activeImage, setActiveImage] = useState(0);
 
-    const { data: property, isLoading, error } = useQuery({
+    const { data: property, isLoading, error } = useQuery<Property>({
         queryKey: ['property', id],
         queryFn: () => fetchPropertyById(id!),
         enabled: !!id,
@@ -171,8 +187,8 @@ export default function PropertyDetailsPage() {
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                                 <div className="flex flex-col items-center"><BedDouble className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">{propertyData?.bedrooms || 0} Beds</span></div>
-                                <div className="flex flex-col items-center"><Bath className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">4 Baths</span></div>
-                                <div className="flex flex-col items-center"><Car className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">4 Parks</span></div>
+                                <div className="flex flex-col items-center"><Bath className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">{propertyData?.bathrooms || 0} Baths</span></div>
+                                <div className="flex flex-col items-center"><Car className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">{propertyData?.parking_spots || 0} Parks</span></div>
                                 <div className="flex flex-col items-center"><Ruler className="w-6 h-6 mb-1 text-primary"/> <span className="text-sm">{propertyData?.size || 'N/A'}</span></div>
                             </div>
                         </div>
