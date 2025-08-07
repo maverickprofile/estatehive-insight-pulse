@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Bell, Search, User, Settings, LogOut, PanelLeft, CheckCheck, X } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,9 +53,9 @@ export default function Header() {
           if (error) throw error;
           if (data) setProfile(data);
         }
-      } catch (error: any) {
-        console.error('Error fetching profile:', error.message);
-      }
+        } catch (error) {
+        console.error('Error fetching profile:', (error as Error).message);
+        }
     };
     fetchUserAndProfile();
   }, []);
@@ -79,7 +80,7 @@ export default function Header() {
           queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
           toast({
               title: "New Notification",
-              description: (payload.new as any).title,
+                description: (payload.new as { title: string }).title,
           });
         }
       )
@@ -149,7 +150,8 @@ export default function Header() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items/flex items-center gap-2 md:gap-4">
+        <ThemeToggle />
         {/* Notifications */}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -175,7 +177,7 @@ export default function Header() {
                 <DropdownMenuSeparator />
                 <div className="max-h-96 overflow-y-auto">
                     {notifications.length > 0 ? notifications.map(n => (
-                        <DropdownMenuItem key={n.id} className={`flex items-start gap-1 p-3 ${!n.is_read && 'bg-muted/50'}`} onSelect={(e) => { e.preventDefault(); n.link_to && navigate(n.link_to)}}>
+                        <DropdownMenuItem key={n.id} className={`flex items-start gap-1 p-3 ${!n.is_read && 'bg-muted/50'}`} onSelect={(e) => { e.preventDefault(); if (n.link_to) navigate(n.link_to); }}>
                             <div className="flex-1 flex flex-col items-start">
                                 <p className="font-semibold">{n.title}</p>
                                 <p className="text-xs text-muted-foreground">{n.description}</p>
