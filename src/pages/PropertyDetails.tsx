@@ -11,16 +11,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; //
 import { Loader2, ArrowLeft, Edit, Save, MapPin, Building, Home, Store, BedDouble, Bath, Car, Ruler, User, ArrowRight } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from '@/lib/utils';
+import type { Property } from '@/types';
 
 // Function to fetch a single property from Supabase
-const fetchPropertyById = async (id: string) => {
+const fetchPropertyById = async (id: string): Promise<Property> => {
   const { data, error } = await supabase
     .from('properties')
     .select('*')
     .eq('id', id)
     .single();
   if (error) throw new Error(error.message);
-  return data;
+  return data as Property;
 };
 
 export default function PropertyDetailsPage() {
@@ -31,10 +32,10 @@ export default function PropertyDetailsPage() {
     const { toast } = useToast();
 
     const [isEditing, setIsEditing] = useState(searchParams.get('edit') === 'true');
-    const [propertyData, setPropertyData] = useState<any>(null);
+    const [propertyData, setPropertyData] = useState<Property | null>(null);
     const [activeImage, setActiveImage] = useState(0);
 
-    const { data: property, isLoading, error } = useQuery({
+    const { data: property, isLoading, error } = useQuery<Property>({
         queryKey: ['property', id],
         queryFn: () => fetchPropertyById(id!),
         enabled: !!id,
@@ -42,23 +43,17 @@ export default function PropertyDetailsPage() {
 
     useEffect(() => {
         if (property) {
-            setPropertyData({
-                ...property,
-                amenities: property.amenities?.join(', ') || ''
-            });
+            setPropertyData(property);
         }
     }, [property]);
 
-    const updatePropertyMutation = useMutation({
-        mutationFn: async (updatedData: any) => {
+    const updatePropertyMutation = useMutation<void, Error, Property>({
+        mutationFn: async (updatedData) => {
             const { id: propertyId, created_at, ...updateFields } = updatedData;
-            const amenitiesArray = typeof updateFields.amenities === 'string' 
-                ? updateFields.amenities.split(',').map((item: string) => item.trim()).filter(Boolean) 
-                : updateFields.amenities;
 
             const { error } = await supabase
                 .from('properties')
-                .update({ ...updateFields, amenities: amenitiesArray })
+                .update(updateFields)
                 .eq('id', propertyId);
             if (error) throw error;
         },
@@ -68,14 +63,19 @@ export default function PropertyDetailsPage() {
             toast({ title: "Success", description: "Property details updated." });
             setIsEditing(false);
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         }
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
-        setPropertyData((prev: any) => ({ ...prev, [id]: value }));
+        setPropertyData(prev => prev ? { ...prev, [id]: value } as Property : prev);
+    };
+
+    const handleAmenitiesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { value } = e.target;
+        setPropertyData(prev => prev ? { ...prev, amenities: value.split(',').map(item => item.trim()).filter(Boolean) } : prev);
     };
 
     if (isLoading) {
@@ -105,7 +105,7 @@ export default function PropertyDetailsPage() {
                     </div>
                     <div className="flex gap-2 mt-4 md:mt-0">
                         {isEditing ? (
-                            <Button onClick={() => updatePropertyMutation.mutate(propertyData)} disabled={updatePropertyMutation.isPending}>
+                            <Button onClick={() => propertyData && updatePropertyMutation.mutate(propertyData)} disabled={updatePropertyMutation.isPending}>
                                 {updatePropertyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                 <Save className="w-4 h-4 mr-2" />
                                 Save Changes
@@ -191,10 +191,10 @@ export default function PropertyDetailsPage() {
                         <div className="metric-card">
                              <h3 className="text-lg font-semibold mb-2">Amenities</h3>
                              {isEditing ? (
-                                <Input id="amenities" value={propertyData?.amenities || ''} onChange={handleInputChange} placeholder="Comma-separated amenities" />
+                                <Input id="amenities" value={propertyData?.amenities?.join(', ') || ''} onChange={handleAmenitiesChange} placeholder="Comma-separated amenities" />
                             ) : (
                                 <div className="flex flex-wrap gap-2">
-                                    {propertyData?.amenities?.split(', ').map((amenity: string, index: number) => (
+                                    {propertyData?.amenities?.map((amenity, index) => (
                                         <Badge key={index} variant="secondary">{amenity}</Badge>
                                     ))}
                                 </div>
