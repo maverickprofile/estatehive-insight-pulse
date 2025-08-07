@@ -226,7 +226,7 @@ export default function AddPropertyPage() {
                     </div>
                 </div>
                 <div className="mt-8 flex justify-end">
-                    <Button onClick={() => addPropertyMutation.mutate([])} disabled={isUploading} size="lg">
+                    <Button onClick={handleSaveProperty} disabled={isUploading} size="lg">
                         {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Save Property
                     </Button>
