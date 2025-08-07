@@ -150,7 +150,7 @@ export default function Header() {
       </div>
 
       {/* Actions */}
-      <div className="flex items/flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <ThemeToggle />
         {/* Notifications */}
         <DropdownMenu>

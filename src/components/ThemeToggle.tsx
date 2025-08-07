@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 
 export default function ThemeToggle() {
   const [isDark, setIsDark] = useState<boolean>(() =>
+    typeof document !== "undefined" &&
     document.documentElement.classList.contains("dark")
   );
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
+    if (typeof document === "undefined") return;
+    const stored = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
     if (stored === "dark") {
       document.documentElement.classList.add("dark");
       setIsDark(true);
@@ -16,6 +18,7 @@ export default function ThemeToggle() {
   }, []);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
     if (isDark) {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
