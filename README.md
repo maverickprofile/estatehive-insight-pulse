@@ -36,6 +36,17 @@ npm i
 npm run dev
 ```
 
+## Environment Variables
+
+Create a `.env` file in the project root and provide the following values:
+
+```
+VITE_SUPABASE_URL=<your-supabase-url>
+VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+```
+
+These variables are required for the app to connect to Supabase.
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
