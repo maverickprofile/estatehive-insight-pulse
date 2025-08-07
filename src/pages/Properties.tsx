@@ -30,17 +30,12 @@ import {
   Eye, 
   Loader2,
   Search,
-  MapPin
+  MapPin,
+  ArrowRight
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import property1 from "@/assets/property1.jpg"; // Fallback image
 import { cn } from "@/lib/utils";
-
-const statusColors = {
-  active: "bg-green-100 text-green-800 border-green-200",
-  sold: "bg-red-100 text-red-800 border-red-200",
-  rented: "bg-blue-100 text-blue-800 border-blue-200",
-};
 
 const fetchProperties = async () => {
   const { data, error } = await supabase.from('properties').select('*').order('created_at', { ascending: false });
@@ -100,7 +95,7 @@ export default function PropertiesPage() {
       </div>
 
       {/* Filters Section */}
-      <div className="metric-card ">
+      <div className="metric-card">
         <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -110,7 +105,7 @@ export default function PropertiesPage() {
                 <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Filter by Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="sold">Sold</SelectItem>
@@ -121,7 +116,7 @@ export default function PropertiesPage() {
                 <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Filter by Category" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="Apartment">Apartment</SelectItem>
                     <SelectItem value="Villa">Villa</SelectItem>
@@ -140,49 +135,20 @@ export default function PropertiesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProperties.map((property) => (
-            <div key={property.id} className="group relative bg-card border border-border rounded-lg overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <div className="relative h-48 overflow-hidden">
+            <div key={property.id} className="group relative bg-card border border-border rounded-xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg">
+                <div className="relative h-56 overflow-hidden">
                     <img src={property.image_urls?.[0] || property1} alt={property.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <Badge className={cn("absolute top-2 right-2 border", statusColors[property.status as keyof typeof statusColors])} variant="secondary">
-                        {property.status}
-                    </Badge>
+                    <Badge className="absolute top-3 left-3" variant="secondary">{property.badge || 'New Listing'}</Badge>
                 </div>
-                <div className="p-4">
+                <div className="p-4 space-y-3">
                     <h3 className="text-lg font-semibold text-foreground truncate">{property.title}</h3>
-                    <p className="text-sm text-muted-foreground flex items-center mt-1"><MapPin className="w-4 h-4 mr-1.5" />{property.location}</p>
-                    <p className="text-xl font-bold text-primary mt-3">₹{property.price}</p>
-                </div>
-                <div className="p-4 pt-3 flex items-center justify-between border-t border-border mt-2">
-                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/properties/${property.id}`)}>
-                            <Eye className="w-4 h-4" />
+                    <p className="text-sm text-muted-foreground line-clamp-2 h-10">{property.description || `A wonderful ${property.bhk} in ${property.location}`}</p>
+                    <div className="flex items-center justify-between pt-3 border-t">
+                        <p className="text-xl font-bold text-primary">₹ {property.price}</p>
+                        <Button size="sm" onClick={() => navigate(`/properties/${property.id}`)}>
+                            View Details <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/properties/${property.id}?edit=true`)}>
-                            <Edit className="w-4 h-4" />
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the property.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deletePropertyMutation.mutate(property.id)}>
-                                    Delete
-                                </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                      <Button size="sm" onClick={() => navigate(`/properties/${property.id}`)}>View Details</Button>
+                    </div>
                 </div>
             </div>
           ))}

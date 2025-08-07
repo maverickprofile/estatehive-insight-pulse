@@ -13,8 +13,12 @@ import PropertiesLayout from "./pages/PropertiesLayout";
 import AddPropertyLayout from "./pages/AddPropertyLayout";
 import PropertyDetailsLayout from "./pages/PropertyDetailsLayout";
 import LeadsLayout from "./pages/LeadsLayout";
-import CreateLeadLayout from "./pages/CreateLeadLayout"; // New import
+import CreateLeadLayout from "./pages/CreateLeadLayout";
 import ClientsLayout from "./pages/ClientsLayout";
+import CreateClientLayout from "./pages/CreateClientLayout";
+import AgentsLayout from "./pages/AgentsLayout"; // New
+import CreateAgentLayout from "./pages/CreateAgentLayout"; // New
+import AgentDetailsLayout from "./pages/AgentDetailsLayout"; // New
 import AnalyticsLayout from "./pages/AnalyticsLayout";
 import SettingsLayout from "./pages/SettingsLayout";
 import CalendarLayout from "./pages/CalendarLayout";
@@ -35,18 +39,15 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for an active session when the app loads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // Listen for changes in authentication state (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    // Cleanup subscription on component unmount
     return () => subscription.unsubscribe();
   }, []);
 
@@ -61,20 +62,25 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           {!session ? (
-            // Routes accessible when the user is not logged in
             <Routes>
               <Route path="*" element={<Auth />} />
             </Routes>
           ) : (
-            // Routes accessible only when the user is logged in
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/properties" element={<PropertiesLayout />} />
               <Route path="/properties/new" element={<AddPropertyLayout />} />
               <Route path="/properties/:id" element={<PropertyDetailsLayout />} />
               <Route path="/leads" element={<LeadsLayout />} />
-              <Route path="/leads/new" element={<CreateLeadLayout />} /> {/* New Route */}
+              <Route path="/leads/new" element={<CreateLeadLayout />} />
               <Route path="/clients" element={<ClientsLayout />} />
+              <Route path="/clients/new" element={<CreateClientLayout />} />
+              
+              {/* New Agent Routes */}
+              <Route path="/agents" element={<AgentsLayout />} />
+              <Route path="/agents/new" element={<CreateAgentLayout />} />
+              <Route path="/agents/:id" element={<AgentDetailsLayout />} />
+
               <Route path="/analytics" element={<AnalyticsLayout />} />
               <Route path="/reports" element={<AnalyticsLayout />} />
               <Route path="/settings" element={<SettingsLayout />} />
@@ -83,14 +89,12 @@ const App = () => {
               <Route path="/messages" element={<MessagesLayout />} />
               <Route path="/profile" element={<ProfileLayout />} />
               
-              {/* New Invoice Routes */}
               <Route path="/invoices" element={<InvoicesLayout />}>
                 <Route index element={<InvoicesPage />} />
                 <Route path="new" element={<CreateInvoicePage />} />
                 <Route path=":id" element={<InvoiceDetailsPage />} />
               </Route>
 
-              {/* If a logged-in user tries to visit /auth, redirect them to the dashboard */}
               <Route path="/auth" element={<Navigate to="/" />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

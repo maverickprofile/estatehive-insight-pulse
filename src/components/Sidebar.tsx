@@ -15,7 +15,8 @@ import {
   ChevronRight,
   UserCheck,
   Bot,
-  Receipt // New icon import
+  Receipt,
+  Briefcase// New icon import
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import estateHiveLogo from '/favicon_eh.png'; // Make sure to add your logo to this path
@@ -40,6 +41,11 @@ const menuItems = [
     name: "Clients", 
     icon: UserCheck, 
     path: "/clients" 
+  },
+  { 
+    name: "Agents", // New Menu Item
+    icon: Briefcase, 
+    path: "/agents" 
   },
   { 
     name: "Analytics", 

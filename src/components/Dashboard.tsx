@@ -1,262 +1,189 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { Building2, Users, TrendingUp, IndianRupee, MapPin, Plus, UserPlus, BarChart3, PlusCircle, Loader2 } from "lucide-react";
+import { Building2, Users, TrendingUp, IndianRupee, Plus, UserPlus, Loader2, Crown } from "lucide-react";
 import MetricCard from "./MetricCard";
-import PropertyCard from "./PropertyCard";
 import SalesChart from "./SalesChart";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import property1 from "@/assets/property1.jpg"; // Fallback image
+import { Skeleton } from "@/components/ui/skeleton";
 
-const topCities = [
-  { name: "Mumbai", revenue: "₹45.2L", growth: "+12%", color: "bg-primary" },
-  { name: "Delhi", revenue: "₹38.9L", growth: "+8%", color: "bg-accent" },
-  { name: "Bangalore", revenue: "₹32.1L", growth: "+15%", color: "bg-success" },
-  { name: "Pune", revenue: "₹28.7L", growth: "+5%", color: "bg-warning" },
-  { name: "Hyderabad", revenue: "₹24.3L", growth: "+18%", color: "bg-secondary" },
-];
+// --- API Functions for Real-time Data ---
 
-// Function to fetch the 3 most recent properties from Supabase
 const fetchRecentProperties = async () => {
     const { data, error } = await supabase
         .from('properties')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(3);
-    
+        .limit(5); // Fetching 5 for a better carousel experience
+    if (error) throw new Error(error.message);
+    return data;
+};
+
+const fetchDashboardMetrics = async () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+        { count: totalProperties },
+        { count: activeListings },
+        { count: leadsToday },
+        { data: salesThisMonth }
+    ] = await Promise.all([
+        supabase.from('properties').select('*', { count: 'exact', head: true }),
+        supabase.from('properties').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', todayStart.toISOString()),
+        supabase.from('sales').select('sale_price').gte('sale_date', monthStart.toISOString())
+    ]);
+
+    const revenueThisMonth = salesThisMonth?.reduce((sum, sale) => sum + sale.sale_price, 0) || 0;
+    return { totalProperties, activeListings, leadsToday, revenueThisMonth };
+};
+
+const fetchTopAgents = async () => {
+    const { data, error } = await supabase.rpc('get_top_agents');
     if (error) {
-        console.error("Error fetching recent properties:", error);
+        console.error("Error fetching top agents:", error);
         throw new Error(error.message);
     }
     return data;
 };
 
+// --- Helper Function ---
+const formatRevenue = (value: number) => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(2)} L`;
+    return `₹${value.toLocaleString()}`;
+};
 
+// --- Main Dashboard Component ---
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const { data: recentProperties = [], isLoading: isLoadingProperties } = useQuery({
-      queryKey: ['recentProperties'],
-      queryFn: fetchRecentProperties,
-  });
+  const { data: recentProperties = [], isLoading: isLoadingProperties } = useQuery({ queryKey: ['recentProperties'], queryFn: fetchRecentProperties });
+  const { data: metrics, isLoading: isLoadingMetrics } = useQuery({ queryKey: ['dashboardMetrics'], queryFn: fetchDashboardMetrics });
+  const { data: topAgents = [], isLoading: isLoadingAgents } = useQuery({ queryKey: ['topAgents'], queryFn: fetchTopAgents });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's your property overview.</p>
+          <p className="text-muted-foreground">Welcome back! Here's your real-time overview.</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-            onClick={() => navigate('/properties/new')}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Property
-          </Button>
-          <Button variant="outline" onClick={() => navigate('/leads')}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+          <Button onClick={() => navigate('/properties/new')}><Plus className="w-4 h-4 mr-2" /> Add Property</Button>
+          <Button variant="outline" onClick={() => navigate('/leads/new')}><UserPlus className="w-4 h-4 mr-2" /> Add Lead</Button>
         </div>
       </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Total Properties"
-          value="1,248"
-          change="+12% from last month"
-          changeType="positive"
-          icon={Building2}
-          iconColor="text-primary"
-        />
-        <MetricCard
-          title="Leads Today"
-          value="47"
-          change="+8% from yesterday"
-          changeType="positive"
-          icon={Users}
-          iconColor="text-accent"
-        />
-        <MetricCard
-          title="Revenue This Month"
-          value="₹1.85 Cr"
-          change="+15% from last month"
-          changeType="positive"
-          icon={IndianRupee}
-          iconColor="text-success"
-        />
-        <MetricCard
-          title="Active Listings"
-          value="892"
-          change="-2% from last month"
-          changeType="negative"
-          icon={TrendingUp}
-          iconColor="text-warning"
-        />
+        {isLoadingMetrics ? (
+            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)
+        ) : (
+            <>
+                <MetricCard title="Total Properties" value={metrics?.totalProperties?.toLocaleString() || '0'} change="+12%" icon={Building2} iconColor="text-primary" />
+                <MetricCard title="Leads Today" value={metrics?.leadsToday?.toLocaleString() || '0'} change="+8%" icon={Users} iconColor="text-accent" />
+                <MetricCard title="Revenue This Month" value={formatRevenue(metrics?.revenueThisMonth || 0)} change="+15%" icon={IndianRupee} iconColor="text-success" />
+                <MetricCard title="Active Listings" value={metrics?.activeListings?.toLocaleString() || '0'} change="-2%" changeType="negative" icon={TrendingUp} iconColor="text-warning" />
+            </>
+        )}
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Sales Chart */}
         <div className="lg:col-span-2">
           <SalesChart />
         </div>
-
-        {/* Quick Actions */}
         <div className="metric-card">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/properties/new')}>
-              <PlusCircle className="w-4 h-4 mr-3 text-primary" />
-              Add New Property
-            </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/leads')}>
-              <UserPlus className="w-4 h-4 mr-3 text-accent" />
-              Create Lead
-            </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate('/analytics')}>
-              <BarChart3 className="w-4 h-4 mr-3 text-success" />
-              View Analytics
-            </Button>
-            <Button variant="ghost" className="w-full justify-start">
-              <MapPin className="w-4 h-4 mr-3 text-warning" />
-              Manage Locations
-            </Button>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Top Performing Agents</h3>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/agents')}>View All</Button>
+          </div>
+          <div className="space-y-4">
+            {isLoadingAgents ? (
+                Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+            ) : (
+                topAgents.map((agent, index) => (
+                  <div key={agent.name} className="flex items-center justify-between p-3 rounded-lg bg-background/50 hover:bg-background transition-colors">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-12 h-12">
+                          <AvatarImage src={agent.avatar_url} alt={agent.name} />
+                          <AvatarFallback>{agent.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-semibold text-foreground flex items-center">
+                          {agent.name}
+                          {index === 0 && <Crown className="w-4 h-4 ml-2 text-yellow-500 fill-yellow-400" />}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Total Revenue</p>
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold text-success">
+                      {formatRevenue(agent.total_revenue)}
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
         </div>
       </div>
-
-      {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Recently Added Properties */}
-        <div className="bg-white rounded-xl shadow p-6">
-  {/* Header */}
-  <div className="flex items-center justify-between mb-4">
-    <h3 className="text-lg font-semibold text-gray-800">Recently Added Properties</h3>
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => navigate("/properties")}
-      className="text-sm"
-    >
-      View All
-    </Button>
-  </div>
-
-  {/* Carousel Section */}
-  {isLoadingProperties ? (
-    <div className="flex justify-center items-center h-48">
-      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-    </div>
-  ) : (
-    <div className="flex space-x-4 overflow-x-auto hide-scrollbar pb-2">
-      {recentProperties.map((property) => (
-        <div
-          key={property.id}
-          className="min-w-[250px] bg-gray-50 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition duration-200 flex-shrink-0 flex flex-col justify-between"
-        >
-          {/* Image */}
-          <div className="relative h-36 w-full overflow-hidden rounded-t-2xl">
-            <img
-              src={property.image_urls?.[0] || property1}
-              alt={property.title}
-              className="object-cover w-full h-full"
-            />
-            <button className="absolute top-2 right-2 bg-white/70 rounded-full p-1">
-              ❤️
-            </button>
-          </div>
-
-          {/* Content */}
-          <div className="p-4 space-y-1 flex-grow">
-            <h4 className="text-base font-medium truncate text-gray-900">
-              {property.title}
-            </h4>
-            <p className="text-xs text-gray-500 flex items-center">
-              <MapPin className="w-3.5 h-3.5 mr-1" />
-              {property.location}
-            </p>
-
-            {/* Icons */}
-            <div className="flex justify-between text-xs text-gray-600 mt-2">
-              <div className="flex items-center gap-1">
-                🛏 {property.bedrooms}
-              </div>
-              <div className="flex items-center gap-1">
-                🛁 {property.bathrooms}
-              </div>
-              <div className="flex items-center gap-1">
-                🚗 {property.parking || 1}
-              </div>
-            </div>
-
-            {/* Price */}
-            <div className="flex items-center justify-between mt-3">
-              <span className="text-gray-500 text-xs">Price</span>
-              <span className="text-lg font-semibold text-emerald-600 flex items-center">
-                <IndianRupee className="w-4 h-4 mr-1" />
-                {property.price?.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* View Button */}
-          <div className="p-4 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => navigate(`/properties/${property.id}`)}
-            >
-              View Property
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-
-  {/* View All Properties Button */}
-  <div className="mt-6 text-center">
-    <Button
-      onClick={() => navigate("/properties")}
-      className="px-6 text-sm font-medium"
-    >
-      Explore All Properties →
-    </Button>
-  </div>
-</div>
-
-
-        {/* Top Performing Cities */}
-        <div className="metric-card">
+      
+      {/* Recently Added Properties Carousel */}
+      <div className="metric-card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Top Performing Cities</h3>
-            <Button variant="ghost" size="sm">View All</Button>
+              <h3 className="text-lg font-semibold text-foreground">Recently Added Properties</h3>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/properties')}>View All</Button>
           </div>
-          <div className="space-y-4">
-            {topCities.map((city, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/50 hover:bg-background transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${city.color}`} />
-                  <div>
-                    <p className="font-medium text-foreground">{city.name}</p>
-                    <p className="text-sm text-muted-foreground">Revenue: {city.revenue}</p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="text-success">
-                  {city.growth}
-                </Badge>
+          {isLoadingProperties ? (
+              <div className="flex justify-center items-center h-[350px]">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ))}
-          </div>
-        </div>
+          ) : (
+              <Carousel opts={{ align: "start", loop: true }} className="w-full">
+                  <CarouselContent className="-ml-4">
+                      {recentProperties.map((property) => (
+                          <CarouselItem key={property.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+                              <div className="p-1">
+                                  <div className="cursor-pointer group relative flex flex-col bg-card shadow-sm border border-border rounded-lg w-full hover:shadow-lg transition-shadow duration-300">
+                                      <div className="relative h-48 m-2 overflow-hidden rounded-md">
+                                          <img 
+                                              className="transition-transform duration-500 ease-in-out transform group-hover:scale-110 w-full h-full object-cover"
+                                              src={property.image_urls?.[0] || property1} 
+                                              alt={property.title} 
+                                          />
+                                      </div>
+                                      <div className="p-4">
+                                          <h6 className="mb-2 text-foreground text-lg font-semibold truncate">{property.title}</h6>
+                                          <p className="text-muted-foreground leading-normal font-light text-sm line-clamp-2 h-10">
+                                              {property.description || `A wonderful ${property.category} located in ${property.location}.`}
+                                          </p>
+                                      </div>
+                                      <div className="px-4 pb-4 pt-0 mt-2">
+                                          <Button className="w-full" onClick={() => navigate(`/properties/${property.id}`)}>
+                                              View Property
+                                          </Button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </CarouselItem>
+                      ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                  <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+              </Carousel>
+          )}
       </div>
     </div>
   );
