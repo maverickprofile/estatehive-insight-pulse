@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Page Imports
 import Index from "./pages/Index";
@@ -60,7 +60,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <Router>
           {!session ? (
             <Routes>
               <Route path="*" element={<Auth />} />
@@ -99,7 +99,7 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           )}
-        </BrowserRouter>
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );
