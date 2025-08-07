@@ -189,14 +189,11 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <img src="/EH_Logo.svg" alt="Estate Hive Logo" className="h-10 w-auto" />
-          <div>
-            <h1 className="text-2xl font-bold">Estate Hive Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome back, {profile?.full_name?.split(" ")[0] || "Agent"}! Here's your real-time overview.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Estate Hive Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Welcome back, {profile?.full_name?.split(" ")[0] || "Agent"}! Here's your real-time overview.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => navigate("/properties/new")} className="flex items-center gap-2">
@@ -209,21 +206,6 @@ export default function Dashboard() {
           >
             <UserPlus className="h-4 w-4" /> Add Lead
           </Button>
-           <Avatar
-           className="h-10 w-10 cursor-pointer"
-          onClick={() => navigate("/profile")}
-         >
-            <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-           <AvatarFallback>
-         {profile?.full_name
-           ? profile.full_name
-                .split(" ")
-                .map((n) => n[0])
-              .join("")
-                .slice(0, 2)
-         : "AG"}
-         </AvatarFallback>
-         </Avatar>
         </div>
       </div>
 
