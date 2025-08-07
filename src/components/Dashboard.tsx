@@ -209,21 +209,21 @@ export default function Dashboard() {
           >
             <UserPlus className="h-4 w-4" /> Add Lead
           </Button>
-          <Avatar
-            className="h-10 w-10 cursor-pointer"
-            onClick={() => navigate("/profile")}
-          >
-            <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-            <AvatarFallback>
-              {profile?.full_name
-                ? profile.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                : "AG"}
-            </AvatarFallback>
-          </Avatar>
+          // <Avatar
+          //   className="h-10 w-10 cursor-pointer"
+          //   onClick={() => navigate("/profile")}
+          // >
+          //   <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
+          //   <AvatarFallback>
+          //     {profile?.full_name
+          //       ? profile.full_name
+          //           .split(" ")
+          //           .map((n) => n[0])
+          //           .join("")
+          //           .slice(0, 2)
+          //       : "AG"}
+          //   </AvatarFallback>
+          // </Avatar>
         </div>
       </div>
 
