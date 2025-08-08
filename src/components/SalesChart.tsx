@@ -7,7 +7,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  type TooltipProps,
 } from "recharts";
+import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
 
 // Admin dashboard chart data
 const salesData = [
@@ -33,16 +35,20 @@ const formatCurrency = (value: number) => {
 };
 
 // Dark theme custom tooltip
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: TooltipProps<ValueType, NameType>) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1f1f1f]/90 border border-border backdrop-blur-md rounded-md p-3 shadow-md text-white">
         <p className="font-semibold mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index) => (
           <p key={index} className="text-sm" style={{ color: entry.stroke }}>
             {entry.name}: {
-              entry.dataKey === "revenue"
-                ? `₹${entry.value.toLocaleString()}`
+              (entry.dataKey as string) === "revenue"
+                ? `₹${Number(entry.value).toLocaleString()}`
                 : entry.value
             }
           </p>
@@ -52,17 +58,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
+export default function SalesChart({ range }: { range: "7d" | "30d" | "ytd" }) {
+  let data = salesData;
+  if (range === "7d") data = salesData.slice(-1);
+  else if (range === "30d") data = salesData.slice(-3);
 
-export default function SalesChart() {
   return (
-    <div className="metric-card h-96 bg-[#121212] text-white border border-border rounded-lg p-4">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold">Monthly Performance Overview</h3>
-        <p className="text-sm text-gray-400">Revenue, properties sold, and new leads generated per month.</p>
-      </div>
-
+    <div className="rounded-lg overflow-hidden shadow-inner">
       <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={salesData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+        <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
           <defs>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.5} />
