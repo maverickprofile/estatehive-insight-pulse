@@ -137,7 +137,7 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="metric-card p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -151,7 +151,7 @@ function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
   );
 }
 
-const CARD_CLASS = "rounded-lg border bg-card p-6";
+const CARD_CLASS = "metric-card";
 
 export default function Dashboard() {
   const navigate = useNavigate();
