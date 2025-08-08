@@ -137,13 +137,13 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
   return (
-    <div className="rounded-3xl p-6 bg-neutral-100 text-gray-800 shadow-[8px_8px_16px_#bebebe,-8px_-8px_16px_#ffffff] dark:bg-neutral-800 dark:text-gray-100 dark:shadow-[8px_8px_16px_#0a0a0a,-8px_-8px_16px_#262626]">
+    <div className="rounded-lg border bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-lg font-semibold">{title}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <p className="mt-2 text-3xl font-bold">{value}</p>
         </div>
-        <div className="p-4 rounded-full bg-neutral-100 dark:bg-neutral-800 shadow-[inset_2px_2px_5px_#BABECC,inset_-5px_-5px_10px_#FFFFFF] dark:shadow-[inset_2px_2px_5px_#0a0a0a,inset_-5px_-5px_10px_#262626]">
+        <div className="p-3 rounded-lg bg-primary/10">
           <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
@@ -151,8 +151,7 @@ function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
   );
 }
 
-const NEUMORPH_CARD =
-  "rounded-2xl p-6 bg-neutral-100 dark:bg-neutral-800 shadow-[8px_8px_16px_#bebebe,-8px_-8px_16px_#ffffff] dark:shadow-[8px_8px_16px_#0a0a0a,-8px_-8px_16px_#262626]";
+const CARD_CLASS = "rounded-lg border bg-card p-6";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -189,14 +188,11 @@ export default function Dashboard() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <img src="/EH_Logo.svg" alt="Estate Hive Logo" className="h-10 w-auto" />
-          <div>
-            <h1 className="text-2xl font-bold">Estate Hive Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome back, {profile?.full_name?.split(" ")[0] || "Agent"}! Here's your real-time overview.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Estate Hive Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Welcome back, {profile?.full_name?.split(" ")[0] || "Agent"}! Here's your real-time overview.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => navigate("/properties/new")} className="flex items-center gap-2">
@@ -209,21 +205,6 @@ export default function Dashboard() {
           >
             <UserPlus className="h-4 w-4" /> Add Lead
           </Button>
-           <Avatar
-           className="h-10 w-10 cursor-pointer"
-          onClick={() => navigate("/profile")}
-         >
-            <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-           <AvatarFallback>
-         {profile?.full_name
-           ? profile.full_name
-                .split(" ")
-                .map((n) => n[0])
-              .join("")
-                .slice(0, 2)
-         : "AG"}
-         </AvatarFallback>
-         </Avatar>
         </div>
       </div>
 
@@ -254,7 +235,7 @@ export default function Dashboard() {
       {/* Chart and Agents */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <div className={NEUMORPH_CARD}>
+          <div className={CARD_CLASS}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Monthly Performance Overview</h3>
               <Button
@@ -272,7 +253,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className={NEUMORPH_CARD}>
+          <div className={CARD_CLASS}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Recently Added Properties</h3>
               <Button
@@ -304,7 +285,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-4">
-          <div className={NEUMORPH_CARD}>
+          <div className={CARD_CLASS}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Top Performing Agents</h3>
               <Button
@@ -351,7 +332,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className={NEUMORPH_CARD}>
+          <div className={CARD_CLASS}>
             <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <Button
