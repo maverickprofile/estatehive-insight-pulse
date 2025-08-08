@@ -239,7 +239,7 @@ function KpiCard({ title, value, change, icon: Icon, formatter }: KpiCardProps) 
 }
 
 const CARD_CLASS =
-  "rounded-xl border border-border/50 bg-background/60 backdrop-blur-sm p-6 shadow-sm animate-in fade-in slide-in-from-bottom-2";
+  "metric-card animate-in fade-in slide-in-from-bottom-2";
 
 export default function Dashboard() {
   const navigate = useNavigate();
