@@ -212,7 +212,7 @@ function AnimatedNumber({
 function KpiCard({ title, value, change, icon: Icon, formatter }: KpiCardProps) {
   const isPositive = change >= 0;
   return (
-    <div className="rounded-xl bg-gradient-to-br from-card to-background/80 p-6 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+    <div className="metric-card animate-in fade-in slide-in-from-bottom-2">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
@@ -230,7 +230,7 @@ function KpiCard({ title, value, change, icon: Icon, formatter }: KpiCardProps) 
             </span>
           </div>
         </div>
-        <div className="p-3 rounded-full bg-primary/10 shadow-sm">
+        <div className="p-3 rounded-full bg-primary/10">
           <Icon className="h-6 w-6 text-primary" />
         </div>
       </div>
