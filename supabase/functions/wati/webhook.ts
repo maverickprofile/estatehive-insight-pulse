@@ -102,14 +102,14 @@ serve(async (req: Request) => {
     message.conversation_id ??
     message.conversationId ??
     message.conversation?.id;
-  const sender = message.sender ?? message.from ?? message.waId;
+  const sender_id = message.sender ?? message.from ?? message.waId;
   const body =
     typeof message.text === 'object'
       ? message.text.body
       : message.text ?? message.body ?? message.message ?? payload.text;
   const timestamp = message.timestamp ?? payload.timestamp ?? Date.now();
 
-  if (!conversation_id || !sender || !body || !timestamp) {
+  if (!conversation_id || !sender_id || !body || !timestamp) {
     return new Response(
       JSON.stringify({ error: 'Missing message fields' }),
       { status: 400, headers: { 'Content-Type': 'application/json' } },
@@ -118,7 +118,7 @@ serve(async (req: Request) => {
 
   const { error } = await supabase.from('messages').insert({
     conversation_id,
-    sender,
+    sender_id,
     body,
     timestamp: new Date(timestamp).toISOString(),
   });

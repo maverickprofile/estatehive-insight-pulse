@@ -21,7 +21,7 @@ interface Conversation {
 interface Message {
   id: string | number;
   conversation_id: string;
-  sender: string;
+  sender_id: string;
   body: string;
   timestamp: string;
 }
@@ -35,10 +35,10 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const fetchConversations = async () => {
-      type RawMessage = Pick<Message, 'conversation_id' | 'sender' | 'body' | 'timestamp'>;
+      type RawMessage = Pick<Message, 'conversation_id' | 'sender_id' | 'body' | 'timestamp'>;
       const { data, error } = await supabase
         .from('messages')
-        .select('conversation_id, sender, body, timestamp')
+        .select('conversation_id, sender_id, body, timestamp')
         .order('timestamp', { ascending: false });
 
       if (error) {
@@ -52,8 +52,8 @@ export default function MessagesPage() {
           if (!convosMap.has(msg.conversation_id)) {
             convosMap.set(msg.conversation_id, {
               id: msg.conversation_id,
-              name: msg.sender ?? msg.conversation_id,
-              phone: msg.sender ?? '',
+              name: msg.sender_id ?? msg.conversation_id,
+              phone: msg.sender_id ?? '',
               last_message: msg.body,
               updated_at: msg.timestamp,
               unread_count: null,
@@ -108,7 +108,7 @@ export default function MessagesPage() {
     const optimisticMsg: Message = {
       id: Date.now(),
       conversation_id: selectedConversation.id,
-      sender: 'agent',
+      sender_id: 'agent',
       body: messageToSend,
       timestamp: new Date().toISOString(),
     };
@@ -117,7 +117,7 @@ export default function MessagesPage() {
 
     await supabase.from('messages').insert({
       conversation_id: selectedConversation.id,
-      sender: 'agent',
+      sender_id: 'agent',
       body: messageToSend,
       timestamp: optimisticMsg.timestamp,
     });
@@ -201,9 +201,9 @@ export default function MessagesPage() {
               </div>
               <ScrollArea className="flex-1 p-6">
                 <div className="space-y-4">
-                    {messages.map(msg => (
-                        <div key={msg.id} className={cn("flex items-end gap-3", msg.sender === 'agent' ? "justify-end" : "justify-start") }>
-                            {msg.sender !== 'agent' && (
+                      {messages.map(msg => (
+                          <div key={msg.id} className={cn("flex items-end gap-3", msg.sender_id === 'agent' ? "justify-end" : "justify-start") }>
+                              {msg.sender_id !== 'agent' && (
                               <Avatar className="h-8 w-8">
                                 <AvatarFallback>
                                   {selectedConversation.name?.split(' ').map((n: string) => n[0]).join('')}
@@ -212,7 +212,7 @@ export default function MessagesPage() {
                             )}
                             <div className={cn(
                                 "max-w-xs md:max-w-md p-3 rounded-lg",
-                                msg.sender === 'agent' ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+                                msg.sender_id === 'agent' ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
                             )}>
                                 <p className="text-sm">{msg.body}</p>
                                 <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
