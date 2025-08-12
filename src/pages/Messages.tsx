@@ -35,12 +35,32 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const fetchConversations = async () => {
-      const { data } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      type RawMessage = Pick<Message, 'conversation_id' | 'sender' | 'body' | 'timestamp'>;
+      const { data, error } = await supabase
+        .from('messages')
+        .select('conversation_id, sender, body, timestamp')
+        .order('timestamp', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching conversations:', error);
+        return;
+      }
+
       if (data) {
-        const convos = data as Conversation[];
+        const convosMap = new Map<string, Conversation>();
+        (data as RawMessage[]).forEach((msg) => {
+          if (!convosMap.has(msg.conversation_id)) {
+            convosMap.set(msg.conversation_id, {
+              id: msg.conversation_id,
+              name: msg.sender ?? msg.conversation_id,
+              phone: msg.sender ?? '',
+              last_message: msg.body,
+              updated_at: msg.timestamp,
+              unread_count: null,
+            });
+          }
+        });
+        const convos = Array.from(convosMap.values());
         setConversations(convos);
         setSelectedConversation(convos[0] ?? null);
       }
