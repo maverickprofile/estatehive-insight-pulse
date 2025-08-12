@@ -22,8 +22,8 @@ interface Message {
   id: string | number;
   conversation_id: string;
   sender_id: string;
-  body: string;
-  timestamp: string;
+  content: string;
+  sent_at: string;
 }
 
 
@@ -35,11 +35,11 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const fetchConversations = async () => {
-      type RawMessage = Pick<Message, 'conversation_id' | 'sender_id' | 'body' | 'timestamp'>;
+      type RawMessage = Pick<Message, 'conversation_id' | 'sender_id' | 'content' | 'sent_at'>;
       const { data, error } = await supabase
         .from('messages')
-        .select('conversation_id, sender_id, body, timestamp')
-        .order('timestamp', { ascending: false });
+        .select('conversation_id, sender_id, content, sent_at')
+        .order('sent_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching conversations:', error);
@@ -54,8 +54,8 @@ export default function MessagesPage() {
               id: msg.conversation_id,
               name: msg.sender_id ?? msg.conversation_id,
               phone: msg.sender_id ?? '',
-              last_message: msg.body,
-              updated_at: msg.timestamp,
+              last_message: msg.content,
+              updated_at: msg.sent_at,
               unread_count: null,
             });
           }
@@ -75,7 +75,7 @@ export default function MessagesPage() {
         .from('messages')
         .select('*')
         .eq('conversation_id', selectedConversation.id)
-        .order('timestamp', { ascending: true });
+        .order('sent_at', { ascending: true });
       if (data) setMessages(data as Message[]);
     };
     fetchMessages();
@@ -109,8 +109,8 @@ export default function MessagesPage() {
       id: Date.now(),
       conversation_id: selectedConversation.id,
       sender_id: 'agent',
-      body: messageToSend,
-      timestamp: new Date().toISOString(),
+      content: messageToSend,
+      sent_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimisticMsg]);
     setNewMessage('');
@@ -118,8 +118,8 @@ export default function MessagesPage() {
     await supabase.from('messages').insert({
       conversation_id: selectedConversation.id,
       sender_id: 'agent',
-      body: messageToSend,
-      timestamp: optimisticMsg.timestamp,
+      content: messageToSend,
+      sent_at: optimisticMsg.sent_at,
     });
 
     await supabase.functions.invoke('wati-send-message', {
@@ -214,8 +214,8 @@ export default function MessagesPage() {
                                 "max-w-xs md:max-w-md p-3 rounded-lg",
                                 msg.sender_id === 'agent' ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
                             )}>
-                                <p className="text-sm">{msg.body}</p>
-                                <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                <p className="text-sm">{msg.content}</p>
+                                <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                         </div>
                     ))}
