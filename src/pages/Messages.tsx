@@ -1,43 +1,110 @@
-import { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useEffect, useState } from 'react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from "@/components/ui/badge";
 import { Search, Send, Paperclip, Smile } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabaseClient';
 
-const conversations = [
-  { id: 1, name: 'Rajesh Kumar', lastMessage: 'Sure, 11 AM works for me. See you then.', time: '10:45 AM', unread: 0, avatar: 'RK' },
-  { id: 2, name: 'Priya Patel', lastMessage: 'Thanks for the property details!', time: '9:30 AM', unread: 2, avatar: 'PP' },
-  { id: 3, name: 'Amit Sharma', lastMessage: 'Can we reschedule the site visit?', time: 'Yesterday', unread: 0, avatar: 'AS' },
-  { id: 4, name: 'Sunita Agarwal', lastMessage: 'The offer looks good. Let\'s proceed.', time: 'Yesterday', unread: 0, avatar: 'SA' },
-  { id: 5, name: 'Vikram Singh', lastMessage: 'Payment has been made.', time: '2 days ago', unread: 0, avatar: 'VS' },
-];
+interface Conversation {
+  id: string;
+  name: string;
+  phone: string;
+  avatar?: string | null;
+  last_message?: string | null;
+  updated_at?: string | null;
+  unread_count?: number | null;
+}
 
-const initialMessages = [
-    { id: 1, sender: 'Rajesh Kumar', text: 'Hi Rahul, I\'m interested in the Bandra property. Is it still available for a site visit this week?', time: '10:30 AM', sent: false },
-    { id: 2, sender: 'You', text: 'Hello Rajesh, yes it is. I have a slot available tomorrow at 11 AM. Would that work for you?', time: '10:32 AM', sent: true },
-    { id: 3, sender: 'Rajesh Kumar', text: 'Sure, 11 AM works for me. See you then.', time: '10:45 AM', sent: false },
-];
+interface Message {
+  id: string | number;
+  conversation_id: string;
+  sender: string;
+  body: string;
+  timestamp: string;
+}
 
 
 export default function MessagesPage() {
-  const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
-  const [messages, setMessages] = useState(initialMessages);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
 
-  const handleSendMessage = () => {
-    if (newMessage.trim() === '') return;
-    const newMsg = {
-      id: messages.length + 1,
-      sender: 'You',
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      sent: true,
+  useEffect(() => {
+    const fetchConversations = async () => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      if (data) {
+        const convos = data as Conversation[];
+        setConversations(convos);
+        setSelectedConversation(convos[0] ?? null);
+      }
     };
-    setMessages([...messages, newMsg]);
+    fetchConversations();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', selectedConversation.id)
+        .order('timestamp', { ascending: true });
+      if (data) setMessages(data as Message[]);
+    };
+    fetchMessages();
+
+    const channel = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${selectedConversation.id}`,
+        },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as Message]);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedConversation]);
+
+  const handleSendMessage = async () => {
+    if (newMessage.trim() === '' || !selectedConversation) return;
+
+    const messageToSend = newMessage;
+    const optimisticMsg: Message = {
+      id: Date.now(),
+      conversation_id: selectedConversation.id,
+      sender: 'agent',
+      body: messageToSend,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
     setNewMessage('');
+
+    await supabase.from('messages').insert({
+      conversation_id: selectedConversation.id,
+      sender: 'agent',
+      body: messageToSend,
+      timestamp: optimisticMsg.timestamp,
+    });
+
+    await supabase.functions.invoke('wati-send-message', {
+      body: { phone: selectedConversation.phone, message: messageToSend },
+    });
   };
 
   return (
@@ -71,17 +138,22 @@ export default function MessagesPage() {
                   onClick={() => setSelectedConversation(convo)}
                 >
                   <Avatar>
-                    <AvatarFallback>{convo.avatar}</AvatarFallback>
+                    {/* Use provided avatar or initials */}
+                    <AvatarFallback>
+                      {convo.avatar || convo.name?.split(' ').map((n: string) => n[0]).join('')}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden">
                     <div className="flex justify-between items-center">
                       <h4 className="font-semibold text-sm truncate">{convo.name}</h4>
-                      <p className="text-xs text-muted-foreground">{convo.time}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {convo.updated_at && new Date(convo.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
                     <div className="flex justify-between items-start">
-                        <p className="text-xs text-muted-foreground truncate">{convo.lastMessage}</p>
-                        {convo.unread > 0 && (
-                            <Badge className="h-5 w-5 flex items-center justify-center p-0 bg-primary text-primary-foreground text-xs">{convo.unread}</Badge>
+                        <p className="text-xs text-muted-foreground truncate">{convo.last_message}</p>
+                        {convo.unread_count > 0 && (
+                            <Badge className="h-5 w-5 flex items-center justify-center p-0 bg-primary text-primary-foreground text-xs">{convo.unread_count}</Badge>
                         )}
                     </div>
                   </div>
@@ -97,7 +169,10 @@ export default function MessagesPage() {
             <>
               <div className="p-4 border-b border-border flex items-center gap-4">
                 <Avatar>
-                  <AvatarFallback>{selectedConversation.avatar}</AvatarFallback>
+                  <AvatarFallback>
+                    {selectedConversation.avatar ||
+                      selectedConversation.name?.split(' ').map((n: string) => n[0]).join('')}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-semibold text-foreground">{selectedConversation.name}</h3>
@@ -107,14 +182,20 @@ export default function MessagesPage() {
               <ScrollArea className="flex-1 p-6">
                 <div className="space-y-4">
                     {messages.map(msg => (
-                        <div key={msg.id} className={cn("flex items-end gap-3", msg.sent ? "justify-end" : "justify-start")}>
-                            {!msg.sent && <Avatar className="h-8 w-8"><AvatarFallback>{selectedConversation.avatar}</AvatarFallback></Avatar>}
+                        <div key={msg.id} className={cn("flex items-end gap-3", msg.sender === 'agent' ? "justify-end" : "justify-start") }>
+                            {msg.sender !== 'agent' && (
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  {selectedConversation.name?.split(' ').map((n: string) => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
                             <div className={cn(
                                 "max-w-xs md:max-w-md p-3 rounded-lg",
-                                msg.sent ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
+                                msg.sender === 'agent' ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted rounded-bl-none"
                             )}>
-                                <p className="text-sm">{msg.text}</p>
-                                <p className="text-xs opacity-70 mt-1 text-right">{msg.time}</p>
+                                <p className="text-sm">{msg.body}</p>
+                                <p className="text-xs opacity-70 mt-1 text-right">{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             </div>
                         </div>
                     ))}
@@ -122,8 +203,8 @@ export default function MessagesPage() {
               </ScrollArea>
               <div className="p-4 border-t border-border">
                 <div className="relative">
-                  <Input 
-                    placeholder="Type a message..." 
+                  <Input
+                    placeholder="Type a message..."
                     className="pr-28"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
