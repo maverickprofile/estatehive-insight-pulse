@@ -66,13 +66,13 @@ const AIToolCard = ({
   const Icon = tool.icon;
 
   return (
-    <div className="relative group rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-white to-white backdrop-blur-lg flex flex-col transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:shadow-primary/20">
+    <div className="relative group rounded-2xl overflow-hidden border border-border bg-card flex flex-col transition-all duration-300 hover:border-border/80 hover:shadow-xl hover:shadow-primary/20">
       <div className="p-6 flex-grow">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div
   className={cn(
-    "w-16 h-16 rounded-xl flex items-center justify-center bg-gradient-to-br from-black to-black  ring-1 ring-white",
+    "w-16 h-16 rounded-xl flex items-center justify-center ring-1 ring-border bg-gradient-to-br",
     tool.color
   )}
 >
@@ -80,12 +80,12 @@ const AIToolCard = ({
 </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-black">{tool.title}</h3>
+              <h3 className="text-lg font-semibold text-foreground">{tool.title}</h3>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant={tool.status === "Active" ? "default" : "secondary"}>
                   {tool.status}
                 </Badge>
-                <span className="text-xs text-black">{tool.category}</span>
+                <span className="text-xs text-foreground">{tool.category}</span>
               </div>
             </div>
           </div>
@@ -96,13 +96,13 @@ const AIToolCard = ({
           />
         </div>
 
-        <p className="text-sm text-gray mt-4">{tool.description}</p>
+        <p className="text-sm text-muted-foreground mt-4">{tool.description}</p>
 
         <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-medium text-black">Key Features:</h4>
+          <h4 className="text-sm font-medium text-foreground">Key Features:</h4>
           <ul className="space-y-1.5">
             {tool.features.map((feature, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-gray">
+              <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
                 <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
                 <span>{feature}</span>
               </li>
@@ -111,10 +111,10 @@ const AIToolCard = ({
         </div>
       </div>
 
-      <div className="mt-auto p-6 pt-4 border-t border-white/10 bg-white">
+      <div className="mt-auto p-6 pt-4 border-t border-border bg-card">
         <Button
-          variant="outline"
-          className="w-full bg-black border-white/10 hover:border-black/20 text-white hover:bg-white/20"
+          variant="default"
+          className="w-full bg-gradient-to-r from-primary to-primary/90 text-primary-foreground"
           onClick={() => onConfigure(tool)}
         >
           <Settings className="w-4 h-4 mr-2" />
