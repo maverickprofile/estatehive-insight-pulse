@@ -29,6 +29,7 @@ import InvoicesLayout from "./pages/InvoicesLayout";
 import InvoicesPage from "./pages/Invoices";
 import CreateInvoicePage from "./pages/CreateInvoice";
 import InvoiceDetailsPage from "./pages/InvoiceDetails";
+import TestWhatsApp from "./pages/TestWhatsApp";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
@@ -87,6 +88,7 @@ const App = () => {
               <Route path="/calendar" element={<CalendarLayout />} />
               <Route path="/ai-tools" element={<AiToolsLayout />} />
               <Route path="/messages" element={<MessagesLayout />} />
+              <Route path="/test-whatsapp" element={<TestWhatsApp />} />
               <Route path="/profile" element={<ProfileLayout />} />
               
               <Route path="/invoices" element={<InvoicesLayout />}>
