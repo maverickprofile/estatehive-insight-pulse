@@ -14,15 +14,18 @@ export interface WhatsAppConversation {
   id: number
   user_id: string
   client_telegram_id: number // We'll use this for WhatsApp phone numbers
+  telegram_chat_id?: number // For Telegram conversations
+  telegram_username?: string | null // For Telegram usernames
   client_name: string | null
   last_message: string | null
   last_message_at: string | null
   unread_count: number
+  platform?: 'whatsapp' | 'telegram' // Platform indicator
   messages?: WhatsAppMessage[]
 }
 
 export class WhatsAppService {
-  // Get all conversations for the current user
+  // Get all conversations for the current user (both WhatsApp and Telegram)
   static async getConversations(): Promise<WhatsAppConversation[]> {
     try {
       const { data: conversations, error } = await supabase
@@ -31,10 +34,13 @@ export class WhatsAppService {
           id,
           user_id,
           client_telegram_id,
+          telegram_chat_id,
+          telegram_username,
           client_name,
           last_message,
           last_message_at,
-          unread_count
+          unread_count,
+          platform
         `)
         .order('last_message_at', { ascending: false })
 
@@ -103,6 +109,7 @@ export class WhatsAppService {
         user_id: user.user.id,
         client_telegram_id: numericId,
         client_name: clientName || `WhatsApp ${phoneNumber}`,
+        platform: 'whatsapp' as const,
         last_message: null,
         last_message_at: new Date().toISOString(),
         unread_count: 0
@@ -250,10 +257,10 @@ export class WhatsAppService {
     }
   }
 
-  // Subscribe to real-time updates for conversations
+  // Subscribe to real-time updates for all conversations
   static subscribeToConversations(callback: (payload: any) => void) {
     return supabase
-      .channel('conversations_changes')
+      .channel('all_conversations_changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'conversations' }, 
         callback
@@ -263,6 +270,27 @@ export class WhatsAppService {
         callback
       )
       .subscribe()
+  }
+
+  // Get only WhatsApp conversations
+  static async getWhatsAppConversations(): Promise<WhatsAppConversation[]> {
+    try {
+      const { data: conversations, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .or('platform.eq.whatsapp,platform.is.null') // Include null for backward compatibility
+        .order('last_message_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching WhatsApp conversations:', error)
+        throw error
+      }
+
+      return conversations || []
+    } catch (error) {
+      console.error('Failed to fetch WhatsApp conversations:', error)
+      throw error
+    }
   }
 
   // Get phone number from client_telegram_id

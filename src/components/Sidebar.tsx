@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -16,7 +16,9 @@ import {
   UserCheck,
   Bot,
   Receipt,
-  Briefcase// New icon import
+  Briefcase,
+  X,
+  Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import estateHiveLogo from '/favicon_eh.png'; // Make sure to add your logo to this path
@@ -100,9 +102,28 @@ const quickActions = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768) {
+        setIsCollapsed(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -121,10 +142,22 @@ export default function Sidebar() {
   };
 
   return (
-    <div className={cn(
-      "bg-sidebar border-r border-sidebar-border h-screen flex flex-col transition-all duration-300",
-      isCollapsed ? "w-20" : "w-64"
-    )}>
+    <>
+      {/* Mobile Overlay */}
+      {isMobile && isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={cn(
+        "bg-sidebar border-r border-sidebar-border h-screen flex flex-col transition-all duration-300",
+        isCollapsed && !isMobile ? "w-20" : "w-64",
+        isMobile && "fixed left-0 top-0 z-50",
+        isMobile && !isOpen && "-translate-x-full"
+      )}>
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         {!isCollapsed && (
@@ -136,26 +169,35 @@ export default function Sidebar() {
             </div>
           </div>
         )}
-         {isCollapsed && (
+        {isCollapsed && !isMobile && (
           <div className="flex items-center justify-center w-full">
             <img src={estateHiveLogo} alt="Estate Hive Logo" className="w-8 h-8 rounded-lg" />
           </div>
         )}
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className={cn("p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors", isCollapsed && "hidden")}
-        >
+        {isMobile ? (
+          <button 
+            onClick={onClose}
+            className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors md:hidden"
+          >
+            <X className="w-4 h-4 text-sidebar-foreground" />
+          </button>
+        ) : (
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={cn("p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors hidden md:block", isCollapsed && "hidden")}
+          >
             <ChevronLeft className="w-4 h-4 text-sidebar-foreground" />
-        </button>
+          </button>
+        )}
       </div>
-       {isCollapsed && (
+      {isCollapsed && !isMobile && (
         <div className="p-4 border-b border-sidebar-border">
-             <button 
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors w-full flex justify-center"
-            >
-                <ChevronRight className="w-4 h-4 text-sidebar-foreground" />
-            </button>
+          <button 
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-1.5 hover:bg-sidebar-accent rounded-lg transition-colors w-full flex justify-center"
+          >
+            <ChevronRight className="w-4 h-4 text-sidebar-foreground" />
+          </button>
         </div>
       )}
 
@@ -169,23 +211,24 @@ export default function Sidebar() {
               <NavLink
                 key={item.name}
                 to={item.path}
+                onClick={() => isMobile && onClose?.()}
                 className={({ isActive }) => cn(
                   "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
                   "text-sidebar-foreground hover:bg-sidebar-accent",
                   isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-                  isCollapsed && "justify-center"
+                  isCollapsed && !isMobile && "justify-center"
                 )}
-                title={isCollapsed ? item.name : undefined}
+                title={isCollapsed && !isMobile ? item.name : undefined}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                {!isCollapsed && <span>{item.name}</span>}
+                {(!isCollapsed || isMobile) && <span>{item.name}</span>}
               </NavLink>
             );
           })}
         </div>
 
         {/* Quick Actions */}
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <div className="pt-6">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-3">
               Quick Actions
@@ -196,7 +239,10 @@ export default function Sidebar() {
                 return (
                   <button
                     key={action.name}
-                    onClick={() => handleQuickAction(action.action)}
+                    onClick={() => {
+                      handleQuickAction(action.action);
+                      isMobile && onClose?.();
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent rounded-lg transition-colors"
                   >
                     <Icon className={cn("w-4 h-4", action.color)} />
@@ -213,18 +259,20 @@ export default function Sidebar() {
       <div className="p-4 border-t border-sidebar-border mt-auto">
         <NavLink
           to="/settings"
+          onClick={() => isMobile && onClose?.()}
           className={({ isActive }) => cn(
             "flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors",
             "text-sidebar-foreground hover:bg-sidebar-accent",
             isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-            isCollapsed && "justify-center"
+            isCollapsed && !isMobile && "justify-center"
           )}
-          title={isCollapsed ? "Settings" : undefined}
+          title={isCollapsed && !isMobile ? "Settings" : undefined}
         >
           <Settings className="w-5 h-5 flex-shrink-0" />
-          {!isCollapsed && <span>Settings</span>}
+          {(!isCollapsed || isMobile) && <span>Settings</span>}
         </NavLink>
       </div>
     </div>
+    </>
   );
 }

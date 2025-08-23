@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Search, User, Settings, LogOut, PanelLeft, CheckCheck, X } from "lucide-react";
+import { Bell, Search, User, Settings, LogOut, Menu, CheckCheck, X } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,6 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import Sidebar from "./Sidebar";
 import { useToast } from "./ui/use-toast";
 
 // Function to fetch notifications
@@ -31,7 +29,11 @@ const fetchNotifications = async (userId: string) => {
     return data;
 };
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   const [profile, setProfile] = useState<{ full_name: string; role: string; avatar_url: string | null } | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -129,16 +131,13 @@ export default function Header() {
     <header className="bg-card border-b border-border h-16 flex items-center justify-between px-4 md:px-6">
       {/* Mobile Sidebar Trigger */}
       <div className="md:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <PanelLeft className="w-5 h-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
-            <Sidebar />
-          </SheetContent>
-        </Sheet>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuClick}
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
       </div>
 
       {/* Search */}

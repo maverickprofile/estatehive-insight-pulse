@@ -19,6 +19,7 @@ import CreateClientLayout from "./pages/CreateClientLayout";
 import AgentsLayout from "./pages/AgentsLayout"; // New
 import CreateAgentLayout from "./pages/CreateAgentLayout"; // New
 import AgentDetailsLayout from "./pages/AgentDetailsLayout"; // New
+import CreateAppointmentLayout from "./pages/CreateAppointmentLayout"; // New
 import AnalyticsLayout from "./pages/AnalyticsLayout";
 import SettingsLayout from "./pages/SettingsLayout";
 import CalendarLayout from "./pages/CalendarLayout";
@@ -81,6 +82,9 @@ const App = () => {
               <Route path="/agents" element={<AgentsLayout />} />
               <Route path="/agents/new" element={<CreateAgentLayout />} />
               <Route path="/agents/:id" element={<AgentDetailsLayout />} />
+
+              {/* Appointment Routes */}
+              <Route path="/appointments/new" element={<CreateAppointmentLayout />} />
 
               <Route path="/analytics" element={<AnalyticsLayout />} />
               <Route path="/reports" element={<AnalyticsLayout />} />

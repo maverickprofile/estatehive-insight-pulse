@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Auth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Supabase Authentication</h1>
+        
+        <div class="info">
+            <strong>Supabase URL:</strong> https://nepstrbszgqczpphhknv.supabase.co<br>
+            <strong>Status:</strong> <span id="status">Checking...</span>
+        </div>
+
+        <h2>Sign Up New User</h2>
+        <form id="signupForm">
+            <input type="email" id="signupEmail" placeholder="Email" value="test@example.com" required>
+            <input type="password" id="signupPassword" placeholder="Password" value="Test@123456" required>
+            <button type="submit">Sign Up</button>
+        </form>
+
+        <h2>Sign In</h2>
+        <form id="signinForm">
+            <input type="email" id="signinEmail" placeholder="Email" value="test@example.com" required>
+            <input type="password" id="signinPassword" placeholder="Password" value="Test@123456" required>
+            <button type="submit">Sign In</button>
+        </form>
+
+        <button onclick="checkUser()">Check Current User</button>
+        <button onclick="signOut()">Sign Out</button>
+
+        <div id="result"></div>
+        <div id="errorLog"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+        // Your Supabase credentials
+        const supabaseUrl = 'https://nepstrbszgqczpphhknv.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lcHN0cmJzemdxY3pwcGhoa252Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU4NTYzMjgsImV4cCI6MjA3MTQzMjMyOH0.4i3GgnzFjVDM5PIcQF3UenLRXDcqGCAzbbFMjH2Uy2Q';
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        window.supabase = supabase;
+
+        // Check connection
+        async function checkConnection() {
+            try {
+                const { data, error } = await supabase.from('profiles').select('count').limit(1);
+                if (error) {
+                    document.getElementById('status').innerHTML = `<span style="color: red;">❌ Not Connected - ${error.message}</span>`;
+                } else {
+                    document.getElementById('status').innerHTML = '<span style="color: green;">✅ Connected</span>';
+                }
+            } catch (err) {
+                document.getElementById('status').innerHTML = `<span style="color: red;">❌ Error - ${err.message}</span>`;
+            }
+        }
+
+        // Sign Up
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            
+            showResult('Signing up...');
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: 'Test User'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    showError('Signup Error', error);
+                } else {
+                    showSuccess('Signup successful!', data);
+                }
+            } catch (err) {
+                showError('Unexpected Error', err);
+            }
+        });
+
+        // Sign In
+        document.getElementById('signinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signinEmail').value;
+            const password = document.getElementById('signinPassword').value;
+            
+            showResult('Signing in...');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) {
+                    showError('Signin Error', error);
+                } else {
+                    showSuccess('Signin successful!', data);
+                }
+            } catch (err) {
+                showError('Unexpected Error', err);
+            }
+        });
+
+        // Check User
+        window.checkUser = async function() {
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) {
+                    showError('Get User Error', error);
+                } else if (user) {
+                    showSuccess('Current User', user);
+                } else {
+                    showResult('<div class="info">No user logged in</div>');
+                }
+            } catch (err) {
+                showError('Unexpected Error', err);
+            }
+        }
+
+        // Sign Out
+        window.signOut = async function() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    showError('Signout Error', error);
+                } else {
+                    showSuccess('Signed out successfully!', null);
+                }
+            } catch (err) {
+                showError('Unexpected Error', err);
+            }
+        }
+
+        function showResult(html) {
+            document.getElementById('result').innerHTML = html;
+        }
+
+        function showError(title, error) {
+            console.error(title, error);
+            const errorHtml = `
+                <div class="error">
+                    <strong>${title}:</strong><br>
+                    ${error.message || error}<br>
+                    ${error.details ? `Details: ${error.details}` : ''}
+                    ${error.hint ? `Hint: ${error.hint}` : ''}
+                </div>
+            `;
+            document.getElementById('result').innerHTML = errorHtml;
+            
+            // Log full error
+            document.getElementById('errorLog').innerHTML = `
+                <details>
+                    <summary>Full Error Details</summary>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                </details>
+            `;
+        }
+
+        function showSuccess(title, data) {
+            const successHtml = `
+                <div class="success">
+                    <strong>${title}</strong>
+                    ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+                </div>
+            `;
+            document.getElementById('result').innerHTML = successHtml;
+        }
+
+        // Check connection on load
+        checkConnection();
+    </script>
+</body>
+</html>
