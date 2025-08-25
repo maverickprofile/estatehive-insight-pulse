@@ -176,10 +176,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <DropdownMenuSeparator />
                 <div className="max-h-96 overflow-y-auto">
                     {notifications.length > 0 ? notifications.map(n => (
-                        <DropdownMenuItem key={n.id} className={`flex items-start gap-1 p-3 ${!n.is_read && 'bg-muted/50'}`} onSelect={(e) => { e.preventDefault(); if (n.link_to) navigate(n.link_to); }}>
+                        <DropdownMenuItem key={n.id} className={`flex items-start gap-1 p-3 ${!n.is_read && 'bg-muted/50'}`} onSelect={(e) => { e.preventDefault(); if (n.action_url) navigate(n.action_url); }}>
                             <div className="flex-1 flex flex-col items-start">
                                 <p className="font-semibold">{n.title}</p>
-                                <p className="text-xs text-muted-foreground">{n.description}</p>
+                                <p className="text-xs text-muted-foreground">{n.message || n.description}</p>
                                 <p className="text-xs text-muted-foreground self-end mt-1">{new Date(n.created_at).toLocaleString()}</p>
                             </div>
                             <Button

@@ -11,6 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { notificationsService } from '@/services/database.service';
+import { 
   Loader2, 
   ArrowLeft, 
   Edit2, 
@@ -50,17 +59,23 @@ import {
   CalendarClock,
   FileText,
   Download,
-  ExternalLink
+  ExternalLink,
+  Upload,
+  Trash2,
+  Plus,
+  Bell
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 interface Property {
-    id: string;
+    id: number;
     title?: string;
     description?: string;
     property_type?: string;
+    property_subtype?: string | null;
+    category?: 'sale' | 'rent' | 'lease' | 'rent_to_own';
     status?: string;
     
     // Location
@@ -68,7 +83,7 @@ interface Property {
     city?: string;
     state?: string;
     country?: string;
-    zip_code?: string;
+    postal_code?: string;
     latitude?: number;
     longitude?: number;
     neighborhood?: string;
@@ -76,7 +91,7 @@ interface Property {
     // Pricing
     price?: number;
     price_per_sqft?: number;
-    maintenance_charge?: number;
+    maintenance_fee?: number;
     
     // Specifications
     area_sqft?: number;
@@ -88,7 +103,7 @@ interface Property {
     parking_spaces?: number;
     
     // Features
-    furnished_status?: string;
+    furnishing_status?: string;
     facing_direction?: string;
     age_of_property?: number;
     year_built?: number;
@@ -155,7 +170,7 @@ const fetchPropertyById = async (id: string): Promise<Property> => {
   const { data, error } = await supabase
     .from('properties')
     .select('*')
-    .eq('id', id)
+    .eq('id', parseInt(id))
     .single();
   if (error) throw new Error(error.message);
   return data as Property;
@@ -171,6 +186,9 @@ export default function PropertyDetailsPage() {
     const [propertyData, setPropertyData] = useState<Property | null>(null);
     const [activeImage, setActiveImage] = useState(0);
     const [isSaved, setIsSaved] = useState(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [imageToDelete, setImageToDelete] = useState<number | null>(null);
 
     const { data: property, isLoading, error } = useQuery<Property>({
         queryKey: ['property', id],
@@ -184,29 +202,173 @@ export default function PropertyDetailsPage() {
         }
     }, [property]);
 
+    // Fetch user profile to check if admin
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                setUserProfile({ ...profile, userId: user.id });
+            }
+        };
+        fetchUserProfile();
+    }, []);
+
     const updatePropertyMutation = useMutation<void, Error, Property>({
         mutationFn: async (updatedData) => {
-            const { id: propertyId, created_at, ...updateFields } = updatedData;
-            const { error } = await supabase
+            const { id: propertyId, created_at, updated_at, age_of_property, area_sqm, ...updateFields } = updatedData;
+            
+            // Log the data being sent for debugging
+            console.log('Updating property with ID:', propertyId);
+            console.log('Update fields:', updateFields);
+            
+            // First, update the property
+            const { data: updateData, error: updateError } = await supabase
                 .from('properties')
                 .update(updateFields)
-                .eq('id', propertyId);
-            if (error) throw error;
+                .eq('id', propertyId)
+                .select();
+                
+            if (updateError) {
+                console.error('Update error:', updateError);
+                throw updateError;
+            }
+            
+            console.log('Update response:', updateData);
+            
+            // Then, fetch the updated property
+            const { data, error: fetchError } = await supabase
+                .from('properties')
+                .select('*')
+                .eq('id', propertyId)
+                .single();
+                
+            if (fetchError) {
+                console.error('Fetch error:', fetchError);
+                throw fetchError;
+            }
+            
+            console.log('Update successful, returned data:', data);
+            
+            // Update local state with the returned data
+            if (data) {
+                setPropertyData(data);
+            }
+            
+            // Try to create notification but don't fail if it doesn't work
+            try {
+                if (userProfile && userProfile.userId) {
+                    await notificationsService.createNotification({
+                        user_id: userProfile.userId || userProfile.id,
+                        title: 'Property Updated',
+                        message: `Property "${updatedData.title}" has been updated successfully`,
+                        type: 'success',
+                        action_url: `/properties/${propertyId}`,
+                        is_read: false,
+                        metadata: {
+                            property_id: Number(propertyId),
+                            category: 'property',
+                            priority: 'normal'
+                        }
+                    });
+                }
+            } catch (notificationError) {
+                // Log error but don't fail the entire update
+                console.log('Notification creation failed (RLS policy issue):', notificationError);
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['property', id] });
             queryClient.invalidateQueries({ queryKey: ['properties'] });
-            toast({ title: "Success", description: "Property details updated." });
+            toast({ 
+                title: "Success", 
+                description: "Property details updated successfully."
+            });
             setIsEditing(false);
         },
-        onError: (error: Error) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+        onError: (error: any) => {
+            console.error('Full error details:', error);
+            const errorMessage = error?.message || 'Failed to update property';
+            const errorDetails = error?.details || '';
+            toast({ 
+                title: "Error updating property", 
+                description: `${errorMessage}${errorDetails ? `: ${errorDetails}` : ''}`, 
+                variant: "destructive" 
+            });
         }
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value } = e.target;
-        setPropertyData(prev => prev ? { ...prev, [id]: value } as Property : prev);
+        const { id, value, type } = e.target;
+        let processedValue: any = value;
+        
+        // Handle number inputs
+        if (type === 'number') {
+            processedValue = value === '' ? null : Number(value);
+        }
+        
+        setPropertyData(prev => prev ? { ...prev, [id]: processedValue } as Property : prev);
+    };
+
+    const handleSelectChange = (field: string, value: string) => {
+        setPropertyData(prev => prev ? { ...prev, [field]: value } as Property : prev);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setUploadingImage(true);
+        const newImageUrls: string[] = [];
+
+        for (const file of files) {
+            const fileName = `property-${id}-${Date.now()}-${file.name}`;
+            const { data, error } = await supabase.storage
+                .from('property-images')
+                .upload(fileName, file);
+
+            if (!error && data) {
+                const { data: { publicUrl } } = supabase.storage
+                    .from('property-images')
+                    .getPublicUrl(fileName);
+                newImageUrls.push(publicUrl);
+            }
+        }
+
+        if (newImageUrls.length > 0) {
+            const updatedImages = [...(propertyData?.image_urls || []), ...newImageUrls];
+            setPropertyData(prev => prev ? { ...prev, image_urls: updatedImages } as Property : prev);
+            toast({ title: "Success", description: `${newImageUrls.length} image(s) uploaded successfully` });
+        }
+        setUploadingImage(false);
+    };
+
+    const handleImageDelete = async (index: number) => {
+        if (!propertyData?.image_urls) return;
+        
+        const imageUrl = propertyData.image_urls[index];
+        const fileName = imageUrl.split('/').pop();
+        
+        if (fileName) {
+            await supabase.storage
+                .from('property-images')
+                .remove([fileName]);
+        }
+        
+        const updatedImages = propertyData.image_urls.filter((_, i) => i !== index);
+        setPropertyData(prev => prev ? { ...prev, image_urls: updatedImages } as Property : prev);
+        setImageToDelete(null);
+        
+        // Adjust activeImage if necessary
+        if (activeImage >= updatedImages.length && updatedImages.length > 0) {
+            setActiveImage(updatedImages.length - 1);
+        }
+        
+        toast({ title: "Success", description: "Image deleted successfully" });
     };
 
     const formatPrice = (price?: number) => {
@@ -340,11 +502,32 @@ export default function PropertyDetailsPage() {
                                     </>
                                 )}
                                 
-                                {/* Status Badge */}
-                                <div className="absolute top-4 left-4">
-                                    <Badge className={getStatusBadge(propertyData?.status).color}>
-                                        {getStatusBadge(propertyData?.status).label}
-                                    </Badge>
+                                {/* Status Badge and Admin Controls */}
+                                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                    {isEditing && userProfile?.role === 'admin' ? (
+                                        <Select 
+                                            value={propertyData?.status || 'draft'} 
+                                            onValueChange={(value) => handleSelectChange('status', value)}
+                                        >
+                                            <SelectTrigger className="w-40 bg-white/90 backdrop-blur">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="draft">Draft</SelectItem>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                                <SelectItem value="under_contract">Under Contract</SelectItem>
+                                                <SelectItem value="sold">Sold</SelectItem>
+                                                <SelectItem value="rented">Rented</SelectItem>
+                                                <SelectItem value="inactive">Inactive</SelectItem>
+                                                <SelectItem value="expired">Expired</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <Badge className={getStatusBadge(propertyData?.status).color}>
+                                            {getStatusBadge(propertyData?.status).label}
+                                        </Badge>
+                                    )}
                                 </div>
                                 
                                 {/* Image Counter */}
@@ -355,13 +538,12 @@ export default function PropertyDetailsPage() {
                                 )}
                             </div>
                             
-                            {/* Thumbnail Strip */}
-                            {images.length > 1 && (
-                                <div className="p-4 border-t">
-                                    <div className="flex gap-2 overflow-x-auto">
-                                        {images.map((img, index) => (
+                            {/* Thumbnail Strip with Edit Controls */}
+                            <div className="p-4 border-t">
+                                <div className="flex gap-2 overflow-x-auto items-center">
+                                    {images.map((img, index) => (
+                                        <div key={index} className="relative group">
                                             <button
-                                                key={index}
                                                 onClick={() => setActiveImage(index)}
                                                 className={cn(
                                                     "relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all",
@@ -370,10 +552,45 @@ export default function PropertyDetailsPage() {
                                             >
                                                 <img src={img} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
                                             </button>
-                                        ))}
-                                    </div>
+                                            {isEditing && (
+                                                <Button
+                                                    size="icon"
+                                                    variant="destructive"
+                                                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => handleImageDelete(index)}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {isEditing && (
+                                        <div className="flex-shrink-0">
+                                            <input
+                                                type="file"
+                                                id="image-upload"
+                                                className="hidden"
+                                                accept="image/*"
+                                                multiple
+                                                onChange={handleImageUpload}
+                                            />
+                                            <label
+                                                htmlFor="image-upload"
+                                                className={cn(
+                                                    "flex items-center justify-center w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 hover:border-primary cursor-pointer transition-colors",
+                                                    uploadingImage && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {uploadingImage ? (
+                                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                                ) : (
+                                                    <Plus className="h-6 w-6 text-gray-400" />
+                                                )}
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </Card>
 
                         {/* Property Information Tabs */}
@@ -390,15 +607,51 @@ export default function PropertyDetailsPage() {
                                     <CardHeader>
                                         <CardTitle>Property Description</CardTitle>
                                     </CardHeader>
-                                    <CardContent>
+                                    <CardContent className="space-y-4">
                                         {isEditing ? (
-                                            <Textarea 
-                                                id="description" 
-                                                value={propertyData?.description || ''} 
-                                                onChange={handleInputChange} 
-                                                rows={8}
-                                                className="w-full"
-                                            />
+                                            <>
+                                                <div>
+                                                    <Label htmlFor="title">Property Title</Label>
+                                                    <Input
+                                                        id="title"
+                                                        value={propertyData?.title || ''}
+                                                        onChange={handleInputChange}
+                                                        className="mt-1"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="description">Description</Label>
+                                                    <Textarea 
+                                                        id="description" 
+                                                        value={propertyData?.description || ''} 
+                                                        onChange={handleInputChange} 
+                                                        rows={8}
+                                                        className="mt-1 w-full"
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <Label htmlFor="price">Price (₹)</Label>
+                                                        <Input
+                                                            id="price"
+                                                            type="number"
+                                                            value={propertyData?.price || ''}
+                                                            onChange={handleInputChange}
+                                                            className="mt-1"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="area_sqft">Area (sq.ft)</Label>
+                                                        <Input
+                                                            id="area_sqft"
+                                                            type="number"
+                                                            value={propertyData?.area_sqft || ''}
+                                                            onChange={handleInputChange}
+                                                            className="mt-1"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </>
                                         ) : (
                                             <p className="text-muted-foreground leading-relaxed">
                                                 {propertyData?.description || 'No description available.'}
@@ -414,30 +667,146 @@ export default function PropertyDetailsPage() {
                                         <CardTitle>Property Specifications</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Property Type</p>
-                                            <p className="font-medium capitalize">{propertyData?.property_type || 'N/A'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Year Built</p>
-                                            <p className="font-medium">{propertyData?.year_built || 'N/A'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Total Floors</p>
-                                            <p className="font-medium">{propertyData?.total_floors || 'N/A'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Floor Number</p>
-                                            <p className="font-medium">{propertyData?.floor_number || 'Ground'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Facing</p>
-                                            <p className="font-medium capitalize">{propertyData?.facing_direction?.replace('_', ' ') || 'N/A'}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-muted-foreground">Possession</p>
-                                            <p className="font-medium capitalize">{propertyData?.possession_status?.replace('_', ' ') || 'N/A'}</p>
-                                        </div>
+                                        {isEditing ? (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="property_type">Property Type</Label>
+                                                    <Select 
+                                                        value={propertyData?.property_type || ''} 
+                                                        onValueChange={(value) => handleSelectChange('property_type', value)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="residential">Residential</SelectItem>
+                                                            <SelectItem value="commercial">Commercial</SelectItem>
+                                                            <SelectItem value="land">Land</SelectItem>
+                                                            <SelectItem value="industrial">Industrial</SelectItem>
+                                                            <SelectItem value="agricultural">Agricultural</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="year_built">Year Built</Label>
+                                                    <Input
+                                                        id="year_built"
+                                                        type="number"
+                                                        value={propertyData?.year_built || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="total_floors">Total Floors</Label>
+                                                    <Input
+                                                        id="total_floors"
+                                                        type="number"
+                                                        value={propertyData?.total_floors || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="floor_number">Floor Number</Label>
+                                                    <Input
+                                                        id="floor_number"
+                                                        type="number"
+                                                        value={propertyData?.floor_number || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="bedrooms">Bedrooms</Label>
+                                                    <Input
+                                                        id="bedrooms"
+                                                        type="number"
+                                                        value={propertyData?.bedrooms || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="bathrooms">Bathrooms</Label>
+                                                    <Input
+                                                        id="bathrooms"
+                                                        type="number"
+                                                        value={propertyData?.bathrooms || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="facing_direction">Facing Direction</Label>
+                                                    <Select 
+                                                        value={propertyData?.facing_direction || ''} 
+                                                        onValueChange={(value) => handleSelectChange('facing_direction', value)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="north">North</SelectItem>
+                                                            <SelectItem value="south">South</SelectItem>
+                                                            <SelectItem value="east">East</SelectItem>
+                                                            <SelectItem value="west">West</SelectItem>
+                                                            <SelectItem value="north_east">North East</SelectItem>
+                                                            <SelectItem value="north_west">North West</SelectItem>
+                                                            <SelectItem value="south_east">South East</SelectItem>
+                                                            <SelectItem value="south_west">South West</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="parking_spaces">Parking Spaces</Label>
+                                                    <Input
+                                                        id="parking_spaces"
+                                                        type="number"
+                                                        value={propertyData?.parking_spaces || ''}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label htmlFor="furnishing_status">Furnishing Status</Label>
+                                                    <Select 
+                                                        value={propertyData?.furnishing_status || ''} 
+                                                        onValueChange={(value) => handleSelectChange('furnishing_status', value)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="unfurnished">Unfurnished</SelectItem>
+                                                            <SelectItem value="semi_furnished">Semi Furnished</SelectItem>
+                                                            <SelectItem value="fully_furnished">Fully Furnished</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Property Type</p>
+                                                    <p className="font-medium capitalize">{propertyData?.property_type || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Year Built</p>
+                                                    <p className="font-medium">{propertyData?.year_built || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Total Floors</p>
+                                                    <p className="font-medium">{propertyData?.total_floors || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Floor Number</p>
+                                                    <p className="font-medium">{propertyData?.floor_number || 'Ground'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Facing</p>
+                                                    <p className="font-medium capitalize">{propertyData?.facing_direction?.replace('_', ' ') || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Possession</p>
+                                                    <p className="font-medium capitalize">{propertyData?.possession_status?.replace('_', ' ') || 'N/A'}</p>
+                                                </div>
+                                            </>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </TabsContent>
@@ -473,22 +842,77 @@ export default function PropertyDetailsPage() {
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <p className="text-sm text-muted-foreground">Address</p>
-                                                <p className="font-medium">{propertyData?.address || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-sm text-muted-foreground">Neighborhood</p>
-                                                <p className="font-medium">{propertyData?.neighborhood || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-sm text-muted-foreground">City</p>
-                                                <p className="font-medium">{propertyData?.city || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <p className="text-sm text-muted-foreground">State</p>
-                                                <p className="font-medium">{propertyData?.state || 'N/A'}</p>
-                                            </div>
+                                            {isEditing ? (
+                                                <>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="address">Address</Label>
+                                                        <Input
+                                                            id="address"
+                                                            value={propertyData?.address || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="neighborhood">Neighborhood</Label>
+                                                        <Input
+                                                            id="neighborhood"
+                                                            value={propertyData?.neighborhood || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="city">City</Label>
+                                                        <Input
+                                                            id="city"
+                                                            value={propertyData?.city || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="state">State</Label>
+                                                        <Input
+                                                            id="state"
+                                                            value={propertyData?.state || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="postal_code">ZIP Code</Label>
+                                                        <Input
+                                                            id="postal_code"
+                                                            value={propertyData?.postal_code || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="country">Country</Label>
+                                                        <Input
+                                                            id="country"
+                                                            value={propertyData?.country || ''}
+                                                            onChange={handleInputChange}
+                                                        />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-muted-foreground">Address</p>
+                                                        <p className="font-medium">{propertyData?.address || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-muted-foreground">Neighborhood</p>
+                                                        <p className="font-medium">{propertyData?.neighborhood || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-muted-foreground">City</p>
+                                                        <p className="font-medium">{propertyData?.city || 'N/A'}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <p className="text-sm text-muted-foreground">State</p>
+                                                        <p className="font-medium">{propertyData?.state || 'N/A'}</p>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                         {/* Map placeholder */}
                                         <div className="h-64 bg-accent/20 rounded-lg flex items-center justify-center">
@@ -579,7 +1003,7 @@ export default function PropertyDetailsPage() {
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-muted-foreground">Furnishing</span>
                                         <Badge variant="outline">
-                                            {getFurnishingBadge(propertyData?.furnished_status).label}
+                                            {getFurnishingBadge(propertyData?.furnishing_status).label}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center justify-between">

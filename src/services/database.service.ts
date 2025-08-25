@@ -993,6 +993,17 @@ export const notificationsService = {
     return data
   },
 
+  async createNotification(notification: Omit<Notification, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notification)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
   async getNotificationStatistics() {
     const { data, error } = await supabase
       .rpc('get_notification_statistics')
