@@ -318,7 +318,7 @@ export default function DashboardContent() {
             <Button 
               variant="outline" 
               className="justify-start text-xs sm:text-sm p-2 sm:p-4"
-              onClick={() => navigate('/properties/add')}
+              onClick={() => navigate('/properties/new')}
             >
               <Home className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Add Property</span>

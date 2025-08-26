@@ -1,9 +1,124 @@
 import { supabase } from '@/lib/supabaseClient';
 
 /**
+ * Storage utility functions
+ */
+export const storageUtils = {
+  /**
+   * Check if file type is a valid image format
+   */
+  isValidImageType(file: File): boolean {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    return validTypes.includes(file.type);
+  },
+
+  /**
+   * Check if file size is within limit
+   */
+  isValidFileSize(file: File, maxSizeMB: number): boolean {
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+    return file.size <= maxSizeBytes;
+  },
+
+  /**
+   * Generate unique filename
+   */
+  generateUniqueFileName(originalName: string, prefix?: string): string {
+    const fileExt = originalName.split('.').pop();
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    return `${prefix || 'file'}-${timestamp}-${randomStr}.${fileExt}`;
+  },
+
+  /**
+   * Convert File to base64
+   */
+  fileToBase64: (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  },
+
+  /**
+   * Compress image before upload
+   */
+  compressImage: async (file: File, maxWidth: number = 1920, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: file.type,
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Failed to compress image'));
+            }
+          },
+          file.type,
+          quality
+        );
+      };
+
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  },
+
+  /**
+   * Get file extension
+   */
+  getFileExtension: (filename: string): string => {
+    return filename.split('.').pop()?.toLowerCase() || '';
+  }
+};
+
+/**
  * Storage Service for handling file uploads to Supabase Storage
  */
 export class StorageService {
+  /**
+   * Generic upload image method for different entity types
+   */
+  static async uploadImage(
+    file: File, 
+    entityType: 'property' | 'agent' | 'profile', 
+    entityId?: string | number
+  ): Promise<string> {
+    switch (entityType) {
+      case 'property':
+        return this.uploadPropertyImage(file, entityId as number);
+      case 'agent':
+        return this.uploadAgentAvatar(file, entityId as string);
+      case 'profile':
+        return this.uploadProfileAvatar(file, entityId as string);
+      default:
+        throw new Error(`Unsupported entity type: ${entityType}`);
+    }
+  }
+
   /**
    * Upload property images
    */
@@ -300,81 +415,3 @@ export class StorageService {
     }
   }
 }
-
-// Export storage utilities
-export const storageUtils = {
-  /**
-   * Convert File to base64
-   */
-  fileToBase64: (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  },
-
-  /**
-   * Compress image before upload
-   */
-  compressImage: async (file: File, maxWidth: number = 1920, quality: number = 0.8): Promise<File> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = (maxWidth / width) * height;
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name, {
-                type: file.type,
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            } else {
-              reject(new Error('Failed to compress image'));
-            }
-          },
-          file.type,
-          quality
-        );
-      };
-
-      img.onerror = reject;
-      img.src = URL.createObjectURL(file);
-    });
-  },
-
-  /**
-   * Get file extension
-   */
-  getFileExtension: (filename: string): string => {
-    return filename.split('.').pop()?.toLowerCase() || '';
-  },
-
-  /**
-   * Format file size
-   */
-  formatFileSize: (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  }
-};

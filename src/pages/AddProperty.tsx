@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,16 +17,13 @@ import { Switch } from "@/components/ui/switch";
 import { 
   ArrowLeft, 
   Save, 
-  Loader2,
-  UploadCloud,
-  X,
-  Plus,
-  Image as ImageIcon
+  Loader2
 } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { propertiesService } from '@/services/database.service';
-import { supabase } from '@/lib/supabaseClient';
-import { Progress } from '@/components/ui/progress';
+import DragDropImageUpload from '@/components/DragDropImageUpload';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import PropertyMap from '@/components/PropertyMap';
 
 // Amenities list
 const amenitiesList = [
@@ -40,12 +37,8 @@ const amenitiesList = [
 export default function AddPropertyPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   
   const [propertyData, setPropertyData] = useState({
@@ -55,6 +48,9 @@ export default function AddPropertyPage() {
     property_type: 'residential',
     property_subtype: 'apartment',
     category: 'sale',
+    sale_type: 'new',
+    subcategory: null as string | null,
+    is_featured: false,
     status: 'active',
     
     // Location
@@ -63,8 +59,13 @@ export default function AddPropertyPage() {
     city: '',
     state: '',
     country: 'India',
+    country_code: 'IN',
+    state_code: '',
     postal_code: '',
     neighborhood: '',
+    locality: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
     
     // Pricing
     price: '',
@@ -121,100 +122,6 @@ export default function AddPropertyPage() {
     );
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
-      const validFiles = files.filter(file => {
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        
-        if (!validTypes.includes(file.type)) {
-          toast({
-            title: "Invalid file type",
-            description: `${file.name} is not a valid image file`,
-            variant: "destructive"
-          });
-          return false;
-        }
-        
-        if (file.size > maxSize) {
-          toast({
-            title: "File too large",
-            description: `${file.name} exceeds 10MB limit`,
-            variant: "destructive"
-          });
-          return false;
-        }
-        
-        return true;
-      });
-
-      if (imageFiles.length + validFiles.length > 10) {
-        toast({
-          title: "Too many images",
-          description: "Maximum 10 images allowed",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setImageFiles(prev => [...prev, ...validFiles]);
-      
-      // Create previews
-      validFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setImagePreviews(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadImages = async (): Promise<string[]> => {
-    if (imageFiles.length === 0) return ['/placeholder.svg'];
-    
-    setIsUploading(true);
-    const uploadedUrls: string[] = [];
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      for (let i = 0; i < imageFiles.length; i++) {
-        const file = imageFiles[i];
-        const fileName = `${user.id}/${Date.now()}_${file.name}`;
-        
-        // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
-          .from('property-images')
-          .upload(fileName, file);
-        
-        if (error) throw error;
-        
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('property-images')
-          .getPublicUrl(data.path);
-        
-        uploadedUrls.push(publicUrl);
-        setUploadProgress(((i + 1) / imageFiles.length) * 100);
-      }
-      
-      return uploadedUrls;
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      throw new Error(`Failed to upload images: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-    }
-  };
 
   const handleSubmit = async () => {
     try {
@@ -230,17 +137,8 @@ export default function AddPropertyPage() {
         return;
       }
       
-      // Upload images first
-      let imageUrls: string[] = [];
-      if (imageFiles.length > 0) {
-        toast({
-          title: "Uploading images...",
-          description: "Please wait while we upload your property images"
-        });
-        imageUrls = await uploadImages();
-      } else {
-        imageUrls = ['/placeholder.svg'];
-      }
+      // Use image previews directly (they're already uploaded via DragDropImageUpload)
+      const imageUrls = imagePreviews.length > 0 ? imagePreviews : ['/placeholder.svg'];
       
       // Prepare data for submission
       const submitData: any = {
@@ -315,7 +213,7 @@ export default function AddPropertyPage() {
         </div>
         <Button
           onClick={handleSubmit}
-          disabled={isLoading || isUploading}
+          disabled={isLoading}
           size="lg"
         >
           {isLoading ? (
@@ -409,7 +307,7 @@ export default function AddPropertyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>Category *</Label>
                 <Select
                   value={propertyData.category}
                   onValueChange={(value) => handleInputChange('category', value)}
@@ -423,6 +321,52 @@ export default function AddPropertyPage() {
                     <SelectItem value="lease">For Lease</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {propertyData.category === 'sale' && (
+                <div className="space-y-2">
+                  <Label>Sale Type</Label>
+                  <Select
+                    value={propertyData.sale_type}
+                    onValueChange={(value) => handleInputChange('sale_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="resale">Resale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Subcategory</Label>
+                <Select
+                  value={propertyData.subcategory || ''}
+                  onValueChange={(value) => handleInputChange('subcategory', value || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subcategory" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="eh_living">EH Living</SelectItem>
+                    <SelectItem value="eh_verified">EH Verified</SelectItem>
+                    <SelectItem value="eh_signature">EH Signature</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_featured"
+                  checked={propertyData.is_featured}
+                  onCheckedChange={(checked) => handleInputChange('is_featured', !!checked)}
+                />
+                <Label htmlFor="is_featured" className="cursor-pointer">
+                  Featured Property
+                </Label>
               </div>
 
               <div className="space-y-2">
@@ -449,67 +393,16 @@ export default function AddPropertyPage() {
         <Card>
           <CardHeader>
             <CardTitle>Property Images</CardTitle>
-            <CardDescription>Upload images of the property (Maximum 10 images)</CardDescription>
+            <CardDescription>Upload images of the property (Maximum 20 images) - Drag & drop or paste URLs</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {/* Upload Area */}
-              <div 
-                className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-sm font-medium mb-2">Click to upload images</p>
-                <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB each</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageChange}
-                  disabled={isLoading || isUploading}
-                />
-              </div>
-
-              {/* Upload Progress */}
-              {isUploading && (
-                <div className="space-y-2">
-                  <Progress value={uploadProgress} className="h-2" />
-                  <p className="text-sm text-muted-foreground text-center">
-                    Uploading images... {Math.round(uploadProgress)}%
-                  </p>
-                </div>
-              )}
-
-              {/* Image Previews */}
-              {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeImage(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      {index === 0 && (
-                        <span className="absolute bottom-2 left-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
-                          Main Image
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <DragDropImageUpload
+              images={imagePreviews}
+              onImagesChange={(urls) => setImagePreviews(urls)}
+              maxImages={20}
+              entityType="property"
+              multiple={true}
+            />
           </CardContent>
         </Card>
 
@@ -520,76 +413,61 @@ export default function AddPropertyPage() {
             <CardDescription>Specify the property location</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Street Address</Label>
-                <Input
-                  id="address"
-                  placeholder="e.g., 123 Main Street"
-                  value={propertyData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="unit_number">Unit/Flat Number</Label>
-                <Input
-                  id="unit_number"
-                  placeholder="e.g., A-401"
-                  value={propertyData.unit_number}
-                  onChange={(e) => handleInputChange('unit_number', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Neighborhood/Area</Label>
-                <Input
-                  id="neighborhood"
-                  placeholder="e.g., Whitefield"
-                  value={propertyData.neighborhood}
-                  onChange={(e) => handleInputChange('neighborhood', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  placeholder="e.g., Bangalore"
-                  value={propertyData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  placeholder="e.g., Karnataka"
-                  value={propertyData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="postal_code">Postal Code</Label>
-                <Input
-                  id="postal_code"
-                  placeholder="e.g., 560066"
-                  maxLength={6}
-                  value={propertyData.postal_code}
-                  onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={propertyData.country}
-                  disabled
-                />
-              </div>
+            <LocationAutocomplete
+              country={propertyData.country}
+              state={propertyData.state}
+              city={propertyData.city}
+              locality={propertyData.locality || propertyData.neighborhood}
+              address={propertyData.address}
+              postalCode={propertyData.postal_code}
+              onLocationChange={(location) => {
+                setPropertyData({
+                  ...propertyData,
+                  country: location.country || propertyData.country,
+                  country_code: location.country_code || propertyData.country_code,
+                  state: location.state || propertyData.state,
+                  state_code: location.state_code || propertyData.state_code,
+                  city: location.city || propertyData.city,
+                  locality: location.locality || propertyData.locality,
+                  neighborhood: location.locality || propertyData.neighborhood,
+                  address: location.address || propertyData.address,
+                  postal_code: location.postal_code || propertyData.postal_code,
+                  latitude: location.latitude !== undefined ? location.latitude : propertyData.latitude,
+                  longitude: location.longitude !== undefined ? location.longitude : propertyData.longitude
+                });
+              }}
+            />
+            
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-3">Set Property Location on Map</h3>
+              <PropertyMap
+                latitude={propertyData.latitude}
+                longitude={propertyData.longitude}
+                address={propertyData.address}
+                onLocationChange={(lat, lng) => {
+                  setPropertyData({
+                    ...propertyData,
+                    latitude: lat,
+                    longitude: lng
+                  });
+                }}
+                isEditable={true}
+                height="h-96"
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Click on the map or drag the marker to set the exact property location
+              </p>
+            </div>
+            
+            <div className="mt-4">
+              <Label htmlFor="unit_number">Unit/Flat Number (Optional)</Label>
+              <Input
+                id="unit_number"
+                placeholder="e.g., A-401"
+                value={propertyData.unit_number}
+                onChange={(e) => handleInputChange('unit_number', e.target.value)}
+                className="mt-1"
+              />
             </div>
           </CardContent>
         </Card>

@@ -18,7 +18,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { notificationsService } from '@/services/database.service';
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { notificationsService, propertiesService } from '@/services/database.service';
+import DragDropImageUpload from '@/components/DragDropImageUpload';
+import LocationAutocomplete from '@/components/LocationAutocomplete';
+import PropertyMap from '@/components/PropertyMap';
 import { 
   Loader2, 
   ArrowLeft, 
@@ -75,7 +90,9 @@ interface Property {
     description?: string;
     property_type?: string;
     property_subtype?: string | null;
-    category?: 'sale' | 'rent' | 'lease' | 'rent_to_own';
+    category?: 'sale' | 'rent' | 'lease';
+    sale_type?: 'new' | 'resale' | null;
+    subcategory?: 'eh_living' | 'eh_verified' | 'eh_signature' | null;
     status?: string;
     
     // Location
@@ -83,10 +100,15 @@ interface Property {
     city?: string;
     state?: string;
     country?: string;
+    country_code?: string;
+    state_code?: string;
     postal_code?: string;
     latitude?: number;
     longitude?: number;
     neighborhood?: string;
+    locality?: string;
+    landmark?: string;
+    map_location?: any;
     
     // Pricing
     price?: number;
@@ -154,6 +176,27 @@ const getFurnishingBadge = (status?: string) => {
   return config[status || 'unfurnished'] || config.unfurnished;
 };
 
+const getCategoryBadge = (category?: string, saleType?: string | null) => {
+  const categoryConfig: Record<string, { label: string; color: string }> = {
+    sale: { 
+      label: saleType === 'new' ? "For Sale (New)" : saleType === 'resale' ? "For Sale (Resale)" : "For Sale", 
+      color: "bg-blue-100 text-blue-700" 
+    },
+    rent: { label: "For Rent", color: "bg-green-100 text-green-700" },
+    lease: { label: "For Leasing", color: "bg-purple-100 text-purple-700" }
+  };
+  return categoryConfig[category || 'sale'] || categoryConfig.sale;
+};
+
+const getSubcategoryBadge = (subcategory?: string | null) => {
+  const subcategoryConfig: Record<string, { label: string; color: string }> = {
+    eh_living: { label: "EH Living", color: "bg-indigo-100 text-indigo-700" },
+    eh_verified: { label: "EH Verified", color: "bg-emerald-100 text-emerald-700" },
+    eh_signature: { label: "EH Signature", color: "bg-amber-100 text-amber-700" }
+  };
+  return subcategory && subcategoryConfig[subcategory] ? subcategoryConfig[subcategory] : null;
+};
+
 // Amenities mapping with icons
 const amenityIcons: Record<string, any> = {
   'Swimming Pool': Waves,
@@ -189,6 +232,8 @@ export default function PropertyDetailsPage() {
     const [userProfile, setUserProfile] = useState<any>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [imageToDelete, setImageToDelete] = useState<number | null>(null);
+    const [editingAmenities, setEditingAmenities] = useState<string>('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const { data: property, isLoading, error } = useQuery<Property>({
         queryKey: ['property', id],
@@ -446,10 +491,59 @@ export default function PropertyDetailsPage() {
                                     Save Changes
                                 </Button>
                             ) : (
-                                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                                    <Edit2 className="w-4 h-4 mr-2" />
-                                    Edit Property
-                                </Button>
+                                <>
+                                    <Button variant="outline" onClick={() => setIsEditing(true)}>
+                                        <Edit2 className="w-4 h-4 mr-2" />
+                                        Edit Property
+                                    </Button>
+                                    {userProfile?.role === 'admin' && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive">
+                                                    <Trash2 className="w-4 h-4 mr-2" />
+                                                    Delete Property
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This will permanently delete the property "{propertyData?.title}". 
+                                                        This action cannot be undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction
+                                                        onClick={async () => {
+                                                            setIsDeleting(true);
+                                                            try {
+                                                                await propertiesService.deleteProperty(propertyData?.id!);
+                                                                toast({
+                                                                    title: "Success",
+                                                                    description: "Property deleted successfully"
+                                                                });
+                                                                navigate('/properties');
+                                                            } catch (error) {
+                                                                console.error('Delete error:', error);
+                                                                toast({
+                                                                    title: "Error",
+                                                                    description: "Failed to delete property",
+                                                                    variant: "destructive"
+                                                                });
+                                                                setIsDeleting(false);
+                                                            }
+                                                        }}
+                                                        disabled={isDeleting}
+                                                        className="bg-red-600 hover:bg-red-700"
+                                                    >
+                                                        {isDeleting ? "Deleting..." : "Delete"}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -503,7 +597,19 @@ export default function PropertyDetailsPage() {
                                 )}
                                 
                                 {/* Status Badge and Admin Controls */}
-                                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                                <div className="absolute top-4 left-4 flex gap-2 flex-wrap max-w-md">
+                                    {!isEditing && (
+                                        <>
+                                            <Badge className={getCategoryBadge(propertyData?.category, propertyData?.sale_type).color}>
+                                                {getCategoryBadge(propertyData?.category, propertyData?.sale_type).label}
+                                            </Badge>
+                                            {getSubcategoryBadge(propertyData?.subcategory) && (
+                                                <Badge className={getSubcategoryBadge(propertyData?.subcategory)!.color}>
+                                                    {getSubcategoryBadge(propertyData?.subcategory)!.label}
+                                                </Badge>
+                                            )}
+                                        </>
+                                    )}
                                     {isEditing && userProfile?.role === 'admin' ? (
                                         <Select 
                                             value={propertyData?.status || 'draft'} 
@@ -595,11 +701,15 @@ export default function PropertyDetailsPage() {
 
                         {/* Property Information Tabs */}
                         <Tabs defaultValue="overview" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
+                            <TabsList className={cn(
+                                "grid w-full",
+                                isEditing ? "grid-cols-5" : "grid-cols-4"
+                            )}>
                                 <TabsTrigger value="overview">Overview</TabsTrigger>
                                 <TabsTrigger value="details">Details</TabsTrigger>
                                 <TabsTrigger value="amenities">Amenities</TabsTrigger>
                                 <TabsTrigger value="location">Location</TabsTrigger>
+                                {isEditing && <TabsTrigger value="images">Images</TabsTrigger>}
                             </TabsList>
                             
                             <TabsContent value="overview" className="mt-6">
@@ -649,6 +759,99 @@ export default function PropertyDetailsPage() {
                                                             onChange={handleInputChange}
                                                             className="mt-1"
                                                         />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                                    <div>
+                                                        <Label htmlFor="category">Category</Label>
+                                                        <Select 
+                                                            value={propertyData?.category || 'sale'} 
+                                                            onValueChange={(value) => {
+                                                                handleSelectChange('category', value);
+                                                                // Reset sale_type if category is not sale
+                                                                if (value !== 'sale') {
+                                                                    handleSelectChange('sale_type', null);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <SelectTrigger className="mt-1">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="sale">For Sale</SelectItem>
+                                                                <SelectItem value="rent">For Rent</SelectItem>
+                                                                <SelectItem value="lease">For Leasing</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    {propertyData?.category === 'sale' ? (
+                                                        <div>
+                                                            <Label htmlFor="sale_type">Sale Type</Label>
+                                                            <Select 
+                                                                value={propertyData?.sale_type || 'new'} 
+                                                                onValueChange={(value) => handleSelectChange('sale_type', value)}
+                                                            >
+                                                                <SelectTrigger className="mt-1">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="new">New</SelectItem>
+                                                                    <SelectItem value="resale">Resale</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    ) : (
+                                                        <div>
+                                                            <Label htmlFor="subcategory">Subcategory</Label>
+                                                            <Select 
+                                                                value={propertyData?.subcategory || 'none'} 
+                                                                onValueChange={(value) => handleSelectChange('subcategory', value === 'none' ? null : value)}
+                                                            >
+                                                                <SelectTrigger className="mt-1">
+                                                                    <SelectValue placeholder="Select subcategory" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none">None</SelectItem>
+                                                                    <SelectItem value="eh_living">EH Living</SelectItem>
+                                                                    <SelectItem value="eh_verified">EH Verified</SelectItem>
+                                                                    <SelectItem value="eh_signature">EH Signature</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 mt-4">
+                                                    <div>
+                                                        <Label htmlFor="subcategory">Subcategory</Label>
+                                                        <Select 
+                                                            value={propertyData?.subcategory || 'none'} 
+                                                            onValueChange={(value) => handleSelectChange('subcategory', value === 'none' ? null : value)}
+                                                        >
+                                                            <SelectTrigger className="mt-1">
+                                                                <SelectValue placeholder="Select subcategory" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="none">None</SelectItem>
+                                                                <SelectItem value="eh_living">EH Living</SelectItem>
+                                                                <SelectItem value="eh_verified">EH Verified</SelectItem>
+                                                                <SelectItem value="eh_signature">EH Signature</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2 mt-6">
+                                                        <Checkbox 
+                                                            id="is_featured" 
+                                                            checked={propertyData?.is_featured || false}
+                                                            onCheckedChange={(checked) => 
+                                                                setPropertyData(prev => prev ? { ...prev, is_featured: checked as boolean } as Property : prev)
+                                                            }
+                                                        />
+                                                        <Label 
+                                                            htmlFor="is_featured" 
+                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                        >
+                                                            Feature this property
+                                                        </Label>
                                                     </div>
                                                 </div>
                                             </>
@@ -817,19 +1020,71 @@ export default function PropertyDetailsPage() {
                                         <CardTitle>Amenities & Features</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                            {Array.isArray(propertyData?.amenities) && propertyData.amenities.map((amenity, index) => {
-                                                const Icon = amenityIcons[amenity] || amenityIcons.Default;
-                                                return (
-                                                    <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-accent/50">
-                                                        <Icon className="h-4 w-4 text-primary" />
-                                                        <span className="text-sm">{amenity}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {(!propertyData?.amenities || propertyData.amenities.length === 0) && (
-                                            <p className="text-muted-foreground">No amenities listed</p>
+                                        {isEditing ? (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <Label htmlFor="amenities">Amenities (comma-separated)</Label>
+                                                    <Textarea
+                                                        id="amenities"
+                                                        value={Array.isArray(propertyData?.amenities) 
+                                                            ? propertyData.amenities.join(', ') 
+                                                            : propertyData?.amenities || ''}
+                                                        onChange={(e) => {
+                                                            const amenitiesArray = e.target.value
+                                                                .split(',')
+                                                                .map(a => a.trim())
+                                                                .filter(a => a.length > 0);
+                                                            setPropertyData(prev => prev ? { ...prev, amenities: amenitiesArray } as Property : prev);
+                                                        }}
+                                                        rows={4}
+                                                        placeholder="e.g., Swimming Pool, Gym, Security, Parking, Wi-Fi, Garden"
+                                                        className="mt-1 w-full"
+                                                    />
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        Enter amenities separated by commas
+                                                    </p>
+                                                </div>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                    {Array.isArray(propertyData?.amenities) && propertyData.amenities.map((amenity, index) => {
+                                                        const Icon = amenityIcons[amenity] || amenityIcons.Default;
+                                                        return (
+                                                            <div key={index} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-accent/50">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Icon className="h-4 w-4 text-primary" />
+                                                                    <span className="text-sm">{amenity}</span>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        const updatedAmenities = propertyData.amenities?.filter((_, i) => i !== index) || [];
+                                                                        setPropertyData(prev => prev ? { ...prev, amenities: updatedAmenities } as Property : prev);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                    {Array.isArray(propertyData?.amenities) && propertyData.amenities.map((amenity, index) => {
+                                                        const Icon = amenityIcons[amenity] || amenityIcons.Default;
+                                                        return (
+                                                            <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-accent/50">
+                                                                <Icon className="h-4 w-4 text-primary" />
+                                                                <span className="text-sm">{amenity}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {(!propertyData?.amenities || propertyData.amenities.length === 0) && (
+                                                    <p className="text-muted-foreground">No amenities listed</p>
+                                                )}
+                                            </>
                                         )}
                                     </CardContent>
                                 </Card>
@@ -841,87 +1096,100 @@ export default function PropertyDetailsPage() {
                                         <CardTitle>Location Details</CardTitle>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {isEditing ? (
-                                                <>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="address">Address</Label>
-                                                        <Input
-                                                            id="address"
-                                                            value={propertyData?.address || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="neighborhood">Neighborhood</Label>
-                                                        <Input
-                                                            id="neighborhood"
-                                                            value={propertyData?.neighborhood || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="city">City</Label>
-                                                        <Input
-                                                            id="city"
-                                                            value={propertyData?.city || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="state">State</Label>
-                                                        <Input
-                                                            id="state"
-                                                            value={propertyData?.state || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="postal_code">ZIP Code</Label>
-                                                        <Input
-                                                            id="postal_code"
-                                                            value={propertyData?.postal_code || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label htmlFor="country">Country</Label>
-                                                        <Input
-                                                            id="country"
-                                                            value={propertyData?.country || ''}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">Address</p>
-                                                        <p className="font-medium">{propertyData?.address || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">Neighborhood</p>
-                                                        <p className="font-medium">{propertyData?.neighborhood || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">City</p>
-                                                        <p className="font-medium">{propertyData?.city || 'N/A'}</p>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm text-muted-foreground">State</p>
-                                                        <p className="font-medium">{propertyData?.state || 'N/A'}</p>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                        {/* Map placeholder */}
-                                        <div className="h-64 bg-accent/20 rounded-lg flex items-center justify-center">
-                                            <MapPin className="h-8 w-8 text-muted-foreground" />
-                                            <span className="ml-2 text-muted-foreground">Map View</span>
+                                        {isEditing ? (
+                                            <LocationAutocomplete
+                                                country={propertyData?.country || 'India'}
+                                                state={propertyData?.state || ''}
+                                                city={propertyData?.city || ''}
+                                                locality={propertyData?.locality || propertyData?.neighborhood || ''}
+                                                address={propertyData?.address || ''}
+                                                postalCode={propertyData?.postal_code || ''}
+                                                onLocationChange={(location) => {
+                                                    setPropertyData({
+                                                        ...propertyData,
+                                                        country: location.country || propertyData?.country,
+                                                        country_code: location.country_code || propertyData?.country_code,
+                                                        state: location.state || propertyData?.state,
+                                                        state_code: location.state_code || propertyData?.state_code,
+                                                        city: location.city || propertyData?.city,
+                                                        locality: location.locality || propertyData?.locality,
+                                                        neighborhood: location.locality || propertyData?.neighborhood,
+                                                        address: location.address || propertyData?.address,
+                                                        postal_code: location.postal_code || propertyData?.postal_code,
+                                                        latitude: location.latitude !== undefined ? location.latitude : propertyData?.latitude,
+                                                        longitude: location.longitude !== undefined ? location.longitude : propertyData?.longitude
+                                                    });
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Address</p>
+                                                    <p className="font-medium">{propertyData?.address || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">Locality</p>
+                                                    <p className="font-medium">{propertyData?.locality || propertyData?.neighborhood || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">City</p>
+                                                    <p className="font-medium">{propertyData?.city || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">State</p>
+                                                    <p className="font-medium">{propertyData?.state || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Interactive Map */}
+                                        <div className="h-96 rounded-lg overflow-hidden border">
+                                            <PropertyMap
+                                                latitude={propertyData?.latitude}
+                                                longitude={propertyData?.longitude}
+                                                address={propertyData?.address}
+                                                isEditable={isEditing}
+                                                onLocationChange={(lat, lng) => {
+                                                    if (isEditing) {
+                                                        setPropertyData({
+                                                            ...propertyData,
+                                                            latitude: lat,
+                                                            longitude: lng
+                                                        });
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </CardContent>
                                 </Card>
                             </TabsContent>
+                            {/* Images Tab (only shown when editing) */}
+                            {isEditing && (
+                                <TabsContent value="images" className="mt-6">
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Manage Property Images</CardTitle>
+                                            <p className="text-sm text-muted-foreground">
+                                                Drag and drop to upload or reorder images. You can also add image URLs.
+                                            </p>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <DragDropImageUpload
+                                                images={propertyData?.image_urls || []}
+                                                onImagesChange={(newImages) => {
+                                                    setPropertyData(prev => prev ? {
+                                                        ...prev,
+                                                        image_urls: newImages
+                                                    } as Property : prev);
+                                                }}
+                                                maxImages={20}
+                                                entityType="property"
+                                                entityId={id}
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            )}
                         </Tabs>
                     </div>
 
@@ -1014,26 +1282,6 @@ export default function PropertyDetailsPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Contact Actions */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Interested in this property?</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <Button className="w-full" size="lg">
-                                    <MessageSquare className="h-4 w-4 mr-2" />
-                                    Send Inquiry
-                                </Button>
-                                <Button variant="outline" className="w-full" size="lg">
-                                    <Calendar className="h-4 w-4 mr-2" />
-                                    Schedule Visit
-                                </Button>
-                                <Button variant="outline" className="w-full" size="lg">
-                                    <Phone className="h-4 w-4 mr-2" />
-                                    Contact Agent
-                                </Button>
-                            </CardContent>
-                        </Card>
 
                         {/* Property Stats */}
                         <Card>

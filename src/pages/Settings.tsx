@@ -29,8 +29,11 @@ import {
   Lock,
   User,
   Mail,
-  Phone
+  Phone,
+  Building2
 } from "lucide-react";
+import TeamManagement from "@/components/TeamManagement";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 const teamMembers = [
   {
@@ -154,84 +157,7 @@ export default function SettingsPage() {
 
         <div className="p-6">
           {/* Team Management Tab */}
-          {activeTab === "team" && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Team Members</h3>
-                  <p className="text-sm text-muted-foreground">Manage user access and permissions</p>
-                </div>
-                <Button className="bg-gradient-to-r from-primary to-primary/90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Member
-                </Button>
-              </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Login</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground font-semibold">
-                            {member.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{member.name}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="w-3 h-3 text-muted-foreground" />
-                            <span>{member.email}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="w-3 h-3" />
-                            <span>{member.phone}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={roleColors[member.role as keyof typeof roleColors]} variant="secondary">
-                          {member.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[member.status as keyof typeof statusColors]} variant="secondary">
-                          {member.status.charAt(0).toUpperCase() + member.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">{member.lastLogin}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          {activeTab === "team" && <TeamManagement />}
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && (

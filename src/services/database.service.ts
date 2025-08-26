@@ -350,12 +350,23 @@ export const propertiesService = {
   },
 
   async deleteProperty(id: number) {
+    // First, try to delete the property
     const { error } = await supabase
       .from('properties')
-      .update({ status: 'inactive' })
+      .delete()
       .eq('id', id)
     
-    if (error) throw error
+    if (error) {
+      // If deletion fails (possibly due to foreign key constraints),
+      // fall back to marking as inactive
+      console.warn('Direct deletion failed, marking as inactive:', error)
+      const { error: updateError } = await supabase
+        .from('properties')
+        .update({ status: 'inactive' })
+        .eq('id', id)
+      
+      if (updateError) throw updateError
+    }
   },
 
   async searchProperties(searchTerm: string) {

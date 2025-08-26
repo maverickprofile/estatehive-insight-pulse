@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { OrganizationProvider } from "./contexts/OrganizationContext";
 
 // Page Imports
 import Index from "./pages/Index";
@@ -68,42 +69,44 @@ const App = () => {
               <Route path="*" element={<Auth />} />
             </Routes>
           ) : (
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/properties" element={<PropertiesLayout />} />
-              <Route path="/properties/new" element={<AddPropertyLayout />} />
-              <Route path="/properties/:id" element={<PropertyDetailsLayout />} />
-              <Route path="/leads" element={<LeadsLayout />} />
-              <Route path="/leads/new" element={<CreateLeadLayout />} />
-              <Route path="/clients" element={<ClientsLayout />} />
-              <Route path="/clients/new" element={<CreateClientLayout />} />
-              
-              {/* New Agent Routes */}
-              <Route path="/agents" element={<AgentsLayout />} />
-              <Route path="/agents/new" element={<CreateAgentLayout />} />
-              <Route path="/agents/:id" element={<AgentDetailsLayout />} />
+            <OrganizationProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/properties" element={<PropertiesLayout />} />
+                <Route path="/properties/new" element={<AddPropertyLayout />} />
+                <Route path="/properties/:id" element={<PropertyDetailsLayout />} />
+                <Route path="/leads" element={<LeadsLayout />} />
+                <Route path="/leads/new" element={<CreateLeadLayout />} />
+                <Route path="/clients" element={<ClientsLayout />} />
+                <Route path="/clients/new" element={<CreateClientLayout />} />
+                
+                {/* New Agent Routes */}
+                <Route path="/agents" element={<AgentsLayout />} />
+                <Route path="/agents/new" element={<CreateAgentLayout />} />
+                <Route path="/agents/:id" element={<AgentDetailsLayout />} />
 
-              {/* Appointment Routes */}
-              <Route path="/appointments/new" element={<CreateAppointmentLayout />} />
+                {/* Appointment Routes */}
+                <Route path="/appointments/new" element={<CreateAppointmentLayout />} />
 
-              <Route path="/analytics" element={<AnalyticsLayout />} />
-              <Route path="/reports" element={<AnalyticsLayout />} />
-              <Route path="/settings" element={<SettingsLayout />} />
-              <Route path="/calendar" element={<CalendarLayout />} />
-              <Route path="/ai-tools" element={<AiToolsLayout />} />
-              <Route path="/messages" element={<MessagesLayout />} />
-              <Route path="/test-whatsapp" element={<TestWhatsApp />} />
-              <Route path="/profile" element={<ProfileLayout />} />
-              
-              <Route path="/invoices" element={<InvoicesLayout />}>
-                <Route index element={<InvoicesPage />} />
-                <Route path="new" element={<CreateInvoicePage />} />
-                <Route path=":id" element={<InvoiceDetailsPage />} />
-              </Route>
+                <Route path="/analytics" element={<AnalyticsLayout />} />
+                <Route path="/reports" element={<AnalyticsLayout />} />
+                <Route path="/settings" element={<SettingsLayout />} />
+                <Route path="/calendar" element={<CalendarLayout />} />
+                <Route path="/ai-tools" element={<AiToolsLayout />} />
+                <Route path="/messages" element={<MessagesLayout />} />
+                <Route path="/test-whatsapp" element={<TestWhatsApp />} />
+                <Route path="/profile" element={<ProfileLayout />} />
+                
+                <Route path="/invoices" element={<InvoicesLayout />}>
+                  <Route index element={<InvoicesPage />} />
+                  <Route path="new" element={<CreateInvoicePage />} />
+                  <Route path=":id" element={<InvoiceDetailsPage />} />
+                </Route>
 
-              <Route path="/auth" element={<Navigate to="/" />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="/auth" element={<Navigate to="/" />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </OrganizationProvider>
           )}
         </Router>
       </TooltipProvider>

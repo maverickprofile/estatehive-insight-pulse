@@ -165,7 +165,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             <img src={estateHiveLogo} alt="Estate Hive Logo" className="w-8 h-8 rounded-lg" />
             <div>
               <h1 className="font-bold text-sidebar-foreground">Estate Hive</h1>
-              <p className="text-xs text-muted-foreground">powered by HiveX</p>
+              <p className="text-xs text-muted-foreground">powered by Propli</p>
             </div>
           </div>
         )}
