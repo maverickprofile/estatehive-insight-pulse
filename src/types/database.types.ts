@@ -19,6 +19,7 @@ export type Json =
 export type UserRole = 'admin' | 'agent' | 'user' | 'owner' | 'builder'
 export type PropertyType = 'residential' | 'commercial' | 'land' | 'industrial' | 'agricultural' | 'mixed_use'
 export type PropertyStatus = 'draft' | 'active' | 'pending' | 'under_contract' | 'sold' | 'rented' | 'inactive' | 'expired'
+export type PropertySubcategory = 'eh_living' | 'eh_commercial' | 'eh_verified' | 'eh_signature' | 'eh_dubai'
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost' | 'on_hold'
 export type Priority = 'low' | 'normal' | 'high' | 'urgent'
 export type ClientStatus = 'active' | 'inactive' | 'prospect' | 'vip' | 'blacklisted'
@@ -163,6 +164,7 @@ export interface Property {
   property_type: PropertyType
   property_subtype: string | null
   category: 'sale' | 'rent' | 'lease' | 'rent_to_own'
+  subcategory?: PropertySubcategory | null
   status: PropertyStatus
   address: string | null
   unit_number: string | null

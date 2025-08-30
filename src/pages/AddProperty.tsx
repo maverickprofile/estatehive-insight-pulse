@@ -342,18 +342,20 @@ export default function AddPropertyPage() {
               )}
 
               <div className="space-y-2">
-                <Label>Subcategory</Label>
+                <Label>EH Category (Premium)</Label>
                 <Select
                   value={propertyData.subcategory || ''}
-                  onValueChange={(value) => handleInputChange('subcategory', value || null)}
+                  onValueChange={(value) => handleInputChange('subcategory', value === 'none' ? null : value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select subcategory" />
+                    <SelectValue placeholder="Select EH Category (Optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="eh_living">EH Living</SelectItem>
-                    <SelectItem value="eh_verified">EH Verified</SelectItem>
-                    <SelectItem value="eh_signature">EH Signature</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="eh_commercial">EH Commercial - Premium Commercial Properties</SelectItem>
+                    <SelectItem value="eh_verified">EH Verified - Verified Premium Properties</SelectItem>
+                    <SelectItem value="eh_signature">EH Signature - Luxury Signature Collection</SelectItem>
+                    <SelectItem value="eh_dubai">EH Dubai - Exclusive Dubai Properties</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

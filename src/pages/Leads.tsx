@@ -240,134 +240,391 @@ export default function LeadsPage() {
         </Button>
       </div>
 
-      {/* Statistics Cards - Mobile Optimized */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Card>
-          <CardHeader className="p-2 pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[10px] font-medium">Total</CardTitle>
-              <Activity className="h-3 w-3 text-muted-foreground" />
+      {/* Statistics Cards - Professional Design */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Leads Card */}
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              {stats.new > 0 && (
+                <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-0 text-xs px-2 py-0.5">
+                  +{stats.new} new
+                </Badge>
+              )}
             </div>
-          </CardHeader>
-          <CardContent className="p-2 pt-0">
-            <div className="text-base font-bold">{stats.total}</div>
-            <p className="text-[9px] text-muted-foreground">{stats.new} new</p>
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Total Leads</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                {stats.total}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '100%' }} />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="p-2 pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[10px] font-medium">Qualified</CardTitle>
-              <Target className="h-3 w-3 text-muted-foreground" />
+
+        {/* Qualified Leads Card */}
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                {stats.total > 0 ? Math.round((stats.qualified / stats.total) * 100) : 0}%
+              </span>
             </div>
-          </CardHeader>
-          <CardContent className="p-2 pt-0">
-            <div className="text-base font-bold">{stats.qualified}</div>
-            <Progress value={stats.qualified / stats.total * 100} className="mt-1 h-1" />
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Qualified</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                {stats.qualified}
+              </p>
+              <div className="mt-2">
+                <Progress 
+                  value={stats.total > 0 ? (stats.qualified / stats.total) * 100 : 0} 
+                  className="h-1.5"
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="p-2 pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[10px] font-medium">Won</CardTitle>
-              <CheckCircle className="h-3 w-3 text-green-600" />
+
+        {/* Won Deals Card */}
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0 text-xs px-2 py-0.5">
+                This month
+              </Badge>
             </div>
-          </CardHeader>
-          <CardContent className="p-2 pt-0">
-            <div className="text-base font-bold">{stats.won}</div>
-            <p className="text-[9px] text-muted-foreground">This month</p>
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Won Deals</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                {stats.won}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                  Active pipeline
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="p-2 pb-1">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[10px] font-medium">Rate</CardTitle>
-              <TrendingUp className="h-3 w-3 text-muted-foreground" />
+
+        {/* Conversion Rate Card */}
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent" />
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              {parseFloat(stats.conversion) > 50 ? (
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0 text-xs px-2 py-0.5">
+                  High
+                </Badge>
+              ) : parseFloat(stats.conversion) > 25 ? (
+                <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 border-0 text-xs px-2 py-0.5">
+                  Medium
+                </Badge>
+              ) : (
+                <Badge className="bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0 text-xs px-2 py-0.5">
+                  Low
+                </Badge>
+              )}
             </div>
-          </CardHeader>
-          <CardContent className="p-2 pt-0">
-            <div className="text-base font-bold">{stats.conversion}%</div>
-            <Progress value={parseFloat(stats.conversion)} className="mt-1 h-1" />
+            <div>
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1">Conversion Rate</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                {stats.conversion}%
+              </p>
+              <div className="mt-2">
+                <Progress 
+                  value={parseFloat(stats.conversion)} 
+                  className="h-1.5"
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search & Filters */}
-      <div className="space-y-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={selectedSource} onValueChange={setSelectedSource}>
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="Website">Website</SelectItem>
-              <SelectItem value="Referral">Referral</SelectItem>
-              <SelectItem value="Facebook">Facebook</SelectItem>
-              <SelectItem value="Google Ads">Google Ads</SelectItem>
-              <SelectItem value="Walk-in">Walk-in</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Pipeline Stages - Mobile First */}
-      <div className="w-full">
-        <Card className="w-full">
-          <CardContent className="p-0">
-            {/* Stage Headers - Scrollable on Mobile */}
-            <div className="border-b bg-muted/30 overflow-x-auto">
-              <div className="flex min-w-fit">
-              {leadStages.map((stage, index) => (
-                <div 
-                  key={stage.id}
-                  className={cn(
-                    "flex-1 min-w-[100px] sm:min-w-0 p-2 sm:p-3 border-r last:border-r-0 transition-all relative cursor-pointer",
-                    selectedStage === stage.id && "bg-background",
-                    draggedLead && draggedLead.stage !== stage.id && "hover:bg-accent/50"
-                  )}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, stage.id)}
-                  onClick={() => !draggedLead && setSelectedStage(selectedStage === stage.id ? "all" : stage.id)}
+      {/* Search & Filters - Professional Design */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search leads by name, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10 text-sm border-muted-foreground/20 focus:border-primary"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+                  onClick={() => setSearchTerm("")}
                 >
-                  <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-1">
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <div className={cn("w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0", stage.color)} />
-                      <span className="font-medium text-[10px] sm:text-xs md:text-sm whitespace-nowrap">{stage.title}</span>
+                  ×
+                </Button>
+              )}
+            </div>
+            
+            {/* Filter Section */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Filter by Source</label>
+                <Select value={selectedSource} onValueChange={setSelectedSource}>
+                  <SelectTrigger className="h-9 text-sm border-muted-foreground/20">
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                      <SelectValue placeholder="All Sources" />
                     </div>
-                    <Badge variant="secondary" className="text-[9px] sm:text-[10px] md:text-xs px-1 sm:px-1.5 h-4 sm:h-5">
-                      {getLeadsByStage(stage.id).length}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-muted" />
+                        All Sources
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Website">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        Website
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Referral">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Referral
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Facebook">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-600" />
+                        Facebook
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Google Ads">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        Google Ads
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Walk-in">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                        Walk-in
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex-1 space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Filter by Priority</label>
+                <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                  <SelectTrigger className="h-9 text-sm border-muted-foreground/20">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                      <SelectValue placeholder="All Priorities" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-muted" />
+                        All Priorities
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        High Priority
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                        Medium Priority
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="low">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Low Priority
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Active Filters Display */}
+              {(selectedSource !== "all" || selectedPriority !== "all" || searchTerm) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedSource !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      Source: {selectedSource}
+                      <button
+                        onClick={() => setSelectedSource("all")}
+                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                      >
+                        ×
+                      </button>
                     </Badge>
-                  </div>
-                  {draggedLead && draggedLead.stage !== stage.id && (
-                    <div className="absolute inset-0 border-2 border-dashed border-primary/50 rounded pointer-events-none" />
+                  )}
+                  {selectedPriority !== "all" && (
+                    <Badge variant="secondary" className="gap-1">
+                      Priority: {selectedPriority}
+                      <button
+                        onClick={() => setSelectedPriority("all")}
+                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  )}
+                  {searchTerm && (
+                    <Badge variant="secondary" className="gap-1">
+                      Search: "{searchTerm}"
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                      >
+                        ×
+                      </button>
+                    </Badge>
                   )}
                 </div>
-              ))}
+              )}
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Leads Display Area */}
+      {/* Pipeline Stages - Professional Design */}
+      <div className="w-full">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-0">
+            {/* Pipeline Overview Header */}
+            <div className="p-4 border-b bg-gradient-to-r from-background to-muted/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-base">Lead Pipeline</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {filteredLeads.length} leads • {leads.filter(l => l.stage === "won").length} converted this month
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Drag leads between stages</span>
+                  <div className="flex gap-1">
+                    {leadStages.map((stage) => (
+                      <div key={stage.id} className={cn("w-2 h-2 rounded-full", stage.color)} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stage Headers - Enhanced Design */}
+            <div className="border-b bg-muted/10 overflow-x-auto">
+              <div className="flex min-w-fit">
+                {leadStages.map((stage, index) => {
+                  const stageCount = getLeadsByStage(stage.id).length;
+                  const isActive = selectedStage === stage.id;
+                  const hasLeads = stageCount > 0;
+                  
+                  return (
+                    <div 
+                      key={stage.id}
+                      className={cn(
+                        "flex-1 min-w-[120px] sm:min-w-[140px] p-3 sm:p-4 border-r last:border-r-0 transition-all relative cursor-pointer group",
+                        isActive && "bg-background shadow-sm",
+                        !isActive && "hover:bg-background/50",
+                        draggedLead && draggedLead.stage !== stage.id && "hover:bg-accent/20"
+                      )}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, stage.id)}
+                      onClick={() => !draggedLead && setSelectedStage(selectedStage === stage.id ? "all" : stage.id)}
+                    >
+                      <div className="flex flex-col items-center text-center gap-2">
+                        {/* Stage Indicator */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className={cn("w-3 h-3 rounded-full flex-shrink-0 transition-all", 
+                            stage.color,
+                            hasLeads && "shadow-sm",
+                            isActive && "ring-2 ring-offset-2 ring-primary/30"
+                          )} />
+                          <span className={cn(
+                            "font-medium text-xs sm:text-sm transition-colors",
+                            isActive && "text-primary",
+                            !isActive && "text-foreground"
+                          )}>
+                            {stage.title}
+                          </span>
+                        </div>
+                        
+                        {/* Count Badge */}
+                        <Badge 
+                          variant={hasLeads ? "default" : "secondary"}
+                          className={cn(
+                            "text-xs px-2 py-1 min-w-[24px] transition-all",
+                            hasLeads && "shadow-sm",
+                            isActive && "bg-primary text-primary-foreground",
+                            !hasLeads && "bg-muted/50 text-muted-foreground",
+                            stage.id === "won" && hasLeads && "bg-green-500 hover:bg-green-600",
+                            stage.id === "lost" && hasLeads && "bg-red-500 hover:bg-red-600",
+                            stage.id === "qualified" && hasLeads && "bg-purple-500 hover:bg-purple-600",
+                            stage.id === "new" && hasLeads && "bg-blue-500 hover:bg-blue-600"
+                          )}
+                        >
+                          {stageCount}
+                        </Badge>
+                        
+                        {/* Progress indicator for active stage */}
+                        {isActive && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                        )}
+                      </div>
+                      
+                      {/* Drag and drop visual feedback */}
+                      {draggedLead && draggedLead.stage !== stage.id && (
+                        <div className="absolute inset-0 border-2 border-dashed border-primary/40 rounded bg-primary/5 pointer-events-none flex items-center justify-center">
+                          <span className="text-xs font-medium text-primary bg-background px-2 py-1 rounded shadow-sm">
+                            Drop here
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Leads Display Area */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-0">
           {loading ? (
             <div className="p-3 sm:p-4 md:p-6">
               <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -693,7 +950,6 @@ export default function LeadsPage() {
           )}
         </CardContent>
       </Card>
-      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

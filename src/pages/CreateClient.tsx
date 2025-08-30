@@ -18,11 +18,10 @@ export default function CreateClientPage() {
         name: '',
         email: '',
         phone: '',
-        location: '',
+        city: '',
         status: 'prospect',
-        budget: '',
         source: '',
-        rating: 3.0, // Default rating
+        address: '',
     });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -42,7 +41,6 @@ export default function CreateClientPage() {
             const { error } = await supabase.from('clients').insert([{
                 ...clientData,
                 user_id: user.id,
-                agent: user.user_metadata.full_name || 'Unassigned',
             }]);
 
             if (error) throw error;
@@ -74,12 +72,12 @@ export default function CreateClientPage() {
                     <div className="space-y-4">
                         <Input id="name" placeholder="Full Name" value={clientData.name} onChange={handleInputChange} required />
                         <Input id="email" placeholder="Email Address" type="email" value={clientData.email} onChange={handleInputChange} />
-                        <Input id="phone" placeholder="Phone Number" value={clientData.phone} onChange={handleInputChange} />
-                        <Input id="location" placeholder="Location (e.g., Mumbai)" value={clientData.location} onChange={handleInputChange} />
+                        <Input id="phone" placeholder="Phone Number" value={clientData.phone} onChange={handleInputChange} required />
+                        <Input id="city" placeholder="City (e.g., Mumbai)" value={clientData.city} onChange={handleInputChange} />
                     </div>
                     {/* Column 2 */}
                     <div className="space-y-4">
-                        <Input id="budget" placeholder="Budget (e.g., ₹80L - ₹1.2Cr)" value={clientData.budget} onChange={handleInputChange} />
+                        <Textarea id="address" placeholder="Address" value={clientData.address} onChange={handleInputChange} className="min-h-[40px]" />
                         <Select onValueChange={(value) => handleSelectChange('source', value)}>
                             <SelectTrigger><SelectValue placeholder="Lead Source" /></SelectTrigger>
                             <SelectContent className='bg-white'>

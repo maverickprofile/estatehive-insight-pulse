@@ -147,6 +147,7 @@ export const propertiesService = {
     status?: string
     property_type?: string
     category?: string
+    subcategory?: string
     city?: string
     min_price?: number
     max_price?: number
@@ -163,6 +164,9 @@ export const propertiesService = {
     }
     if (filters?.category) {
       query = query.eq('category', filters.category)
+    }
+    if (filters?.subcategory) {
+      query = query.eq('subcategory', filters.subcategory)
     }
     if (filters?.city) {
       query = query.ilike('city', `%${filters.city}%`)
@@ -254,6 +258,7 @@ export const propertiesService = {
       property_type: property.property_type || 'residential',
       property_subtype: property.property_subtype || 'apartment',
       category: property.category || 'sale',
+      subcategory: property.subcategory || null,
       status: property.status || 'active',
       
       // Location
@@ -490,6 +495,16 @@ export const leadsService = {
     
     if (error) throw error
     return data
+  },
+
+  async deleteLead(id: number) {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    return { success: true }
   }
 }
 
@@ -505,10 +520,7 @@ export const clientsService = {
   }) {
     let query = supabase
       .from('clients')
-      .select(`
-        *,
-        primary_agent:agents!primary_agent_id(name, email, phone)
-      `)
+      .select('*')
     
     if (filters?.status) {
       query = query.eq('status', filters.status)
@@ -520,7 +532,7 @@ export const clientsService = {
       query = query.eq('loyalty_tier', filters.loyalty_tier)
     }
     
-    const { data, error } = await query.order('total_transactions', { ascending: false })
+    const { data, error } = await query.order('created_at', { ascending: false })
     
     if (error) throw error
     return data
@@ -529,11 +541,7 @@ export const clientsService = {
   async getClientById(id: number) {
     const { data, error } = await supabase
       .from('clients')
-      .select(`
-        *,
-        primary_agent:agents!primary_agent_id(*),
-        lead:leads!lead_id(*)
-      `)
+      .select('*')
       .eq('id', id)
       .single()
     

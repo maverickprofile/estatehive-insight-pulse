@@ -244,7 +244,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold">Clients</h1>
           <p className="text-sm sm:text-base text-muted-foreground">Manage your client relationships and interactions</p>
         </div>
-        <Button onClick={() => navigate('/clients/add')} className="w-full sm:w-auto">
+        <Button onClick={() => navigate('/clients/new')} className="w-full sm:w-auto">
           <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
           Add Client
         </Button>
@@ -252,64 +252,118 @@ export default function ClientsPage() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+          <CardContent className="relative p-3 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+              {stats.total}
+            </div>
             <p className="text-xs text-muted-foreground">
               All registered clients
             </p>
+            <div className="absolute bottom-2 right-2">
+              <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-0">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                100%
+              </Badge>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">Active Clients</CardTitle>
-            <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 dark:text-green-400" />
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold">{stats.active}</div>
+          <CardContent className="relative p-3 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-600 to-green-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent">
+              {stats.active}
+            </div>
             <p className="text-xs text-muted-foreground">
               Currently engaged
             </p>
+            <div className="absolute bottom-2 right-2">
+              <Badge className="bg-green-500/10 text-green-700 dark:text-green-300 border-0">
+                {stats.total > 0 ? `${((stats.active / stats.total) * 100).toFixed(0)}%` : '0%'}
+              </Badge>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">VIP Clients</CardTitle>
-            <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold">{stats.vip}</div>
+          <CardContent className="relative p-3 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
+              {stats.vip}
+            </div>
             <p className="text-xs text-muted-foreground">
               Premium customers
             </p>
+            <div className="absolute bottom-2 right-2">
+              <Badge className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-0">
+                <Star className="w-3 h-3 mr-1 fill-current" />
+                Elite
+              </Badge>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold truncate">₹{stats.totalValue.toLocaleString()}</div>
+          <CardContent className="relative p-3 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-600 bg-clip-text text-transparent">
+              ₹{stats.totalValue.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               From all clients
             </p>
+            <div className="absolute bottom-2 right-2">
+              <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-0">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                Revenue
+              </Badge>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent" />
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium">Avg. Lifetime Value</CardTitle>
-            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
           </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold truncate">₹{Math.round(stats.avgLifetimeValue).toLocaleString()}</div>
+          <CardContent className="relative p-3 sm:p-6">
+            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-400 dark:to-indigo-600 bg-clip-text text-transparent">
+              ₹{Math.round(stats.avgLifetimeValue).toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Per client
             </p>
+            <div className="absolute bottom-2 right-2">
+              <Badge className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-0">
+                <Trophy className="w-3 h-3 mr-1" />
+                Value
+              </Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -388,7 +442,7 @@ export default function ClientsPage() {
               <p className="text-sm sm:text-base text-muted-foreground mb-4">
                 Try adjusting your filters or add a new client
               </p>
-              <Button onClick={() => navigate('/clients/add')} className="w-full sm:w-auto">
+              <Button onClick={() => navigate('/clients/new')} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 Add Client
               </Button>

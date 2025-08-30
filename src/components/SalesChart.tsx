@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -32,12 +33,12 @@ const formatCurrency = (value: number) => {
   return `₹${value.toLocaleString()}`;
 };
 
-// Dark theme custom tooltip
+// Theme-aware custom tooltip
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1f1f1f]/90 border border-border backdrop-blur-md rounded-md p-3 shadow-md text-white">
-        <p className="font-semibold mb-2">{label}</p>
+      <div className="bg-background/90 border border-border backdrop-blur-md rounded-md p-3 shadow-md">
+        <p className="font-semibold mb-2 text-foreground">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.stroke }}>
             {entry.name}: {
@@ -54,11 +55,35 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function SalesChart() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check initial theme
+    const checkTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    
+    checkTheme();
+    
+    // Create observer for theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
+
+  // Dynamic colors based on theme
+  const textColor = isDark ? "#d1d5db" : "#6b7280";
+  const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+
   return (
-    <div className="metric-card h-96 bg-[#121212] text-white border border-border rounded-lg p-4">
+    <div className="h-96">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold">Monthly Performance Overview</h3>
-        <p className="text-sm text-gray-400">Revenue, properties sold, and new leads generated per month.</p>
+        <h3 className="text-lg font-semibold text-foreground">Monthly Performance Overview</h3>
+        <p className="text-sm text-muted-foreground">Revenue, properties sold, and new leads generated per month.</p>
       </div>
 
       <ResponsiveContainer width="100%" height={300}>
@@ -74,12 +99,12 @@ export default function SalesChart() {
             </linearGradient>
           </defs>
 
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
           <XAxis
             dataKey="month"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#d1d5db", fontSize: 12 }}
+            tick={{ fill: textColor, fontSize: 12 }}
             dy={10}
           />
           <YAxis
@@ -87,17 +112,17 @@ export default function SalesChart() {
             axisLine={false}
             tickLine={false}
             tickFormatter={formatCurrency}
-            tick={{ fill: "#d1d5db", fontSize: 12 }}
+            tick={{ fill: textColor, fontSize: 12 }}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#d1d5db", fontSize: 12 }}
+            tick={{ fill: textColor, fontSize: 12 }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ color: "white", paddingTop: "20px" }} />
+          <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
           <Area
             yAxisId="left"
             type="monotone"

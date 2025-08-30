@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -69,7 +69,7 @@ import {
   X,
   Star,
   TrendingUp,
-  Ruler2,
+  Ruler,
   Compass,
   CalendarClock,
   FileText,
@@ -92,7 +92,7 @@ interface Property {
     property_subtype?: string | null;
     category?: 'sale' | 'rent' | 'lease';
     sale_type?: 'new' | 'resale' | null;
-    subcategory?: 'eh_living' | 'eh_verified' | 'eh_signature' | null;
+    subcategory?: 'eh_commercial' | 'eh_verified' | 'eh_signature' | 'eh_dubai' | null;
     status?: string;
     
     // Location
@@ -189,10 +189,27 @@ const getCategoryBadge = (category?: string, saleType?: string | null) => {
 };
 
 const getSubcategoryBadge = (subcategory?: string | null) => {
-  const subcategoryConfig: Record<string, { label: string; color: string }> = {
-    eh_living: { label: "EH Living", color: "bg-indigo-100 text-indigo-700" },
-    eh_verified: { label: "EH Verified", color: "bg-emerald-100 text-emerald-700" },
-    eh_signature: { label: "EH Signature", color: "bg-amber-100 text-amber-700" }
+  const subcategoryConfig: Record<string, { label: string; color: string; icon: any }> = {
+    eh_commercial: { 
+      label: "EH Commercial", 
+      color: "bg-gradient-to-r from-blue-500 to-blue-600 text-white",
+      icon: Building2
+    },
+    eh_verified: { 
+      label: "EH Verified", 
+      color: "bg-gradient-to-r from-green-500 to-emerald-600 text-white",
+      icon: Shield
+    },
+    eh_signature: { 
+      label: "EH Signature", 
+      color: "bg-gradient-to-r from-amber-500 to-yellow-600 text-white",
+      icon: Star
+    },
+    eh_dubai: { 
+      label: "EH Dubai", 
+      color: "bg-gradient-to-r from-purple-500 to-pink-600 text-white",
+      icon: TrendingUp
+    }
   };
   return subcategory && subcategoryConfig[subcategory] ? subcategoryConfig[subcategory] : null;
 };
@@ -453,46 +470,99 @@ export default function PropertyDetailsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Header with Back Button */}
-            <div className="border-b bg-card/50 backdrop-blur sticky top-0 z-10">
-                <div className="container mx-auto px-4 py-4">
+            {/* Header */}
+            <div className="bg-background/60 backdrop-blur-xl border-b border-border/50 sticky top-0 z-50 shadow-sm">
+                <div className="container mx-auto px-4 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Button 
                                 variant="ghost" 
                                 size="icon"
                                 onClick={() => navigate('/properties')}
-                                className="hover:bg-accent"
+                                className="rounded-full hover:bg-primary/10 hover:text-primary transition-all"
                             >
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
-                            <div>
-                                <h1 className="text-xl font-bold">{propertyData?.title || 'Property Details'}</h1>
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {propertyData?.city}, {propertyData?.state}
-                                </p>
+                            <div className="flex items-center gap-4">
+                                <div className="hidden sm:block w-0.5 h-10 bg-border" />
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                                            {propertyData?.title || 'Property Details'}
+                                        </h1>
+                                        {propertyData?.is_featured && (
+                                            <Badge className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white border-0 shadow-sm">
+                                                <Star className="h-3 w-3 mr-1 fill-current" />
+                                                Featured
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-2 mt-0.5">
+                                        <MapPin className="h-3.5 w-3.5 text-primary/60" />
+                                        <span>{[propertyData?.neighborhood, propertyData?.city, propertyData?.state].filter(Boolean).join(', ') || 'Location'}</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => setIsSaved(!isSaved)}>
-                                <Heart className={cn("h-4 w-4", isSaved && "fill-red-500 text-red-500")} />
+                            {/* Action Buttons */}
+                            <div className="hidden md:flex items-center gap-3 mr-3 text-sm">
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Eye className="h-4 w-4" />
+                                    <span className="font-medium">{propertyData?.views_count || 0} views</span>
+                                </div>
+                                <div className="w-px h-5 bg-border" />
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <MessageSquare className="h-4 w-4" />
+                                    <span className="font-medium">{propertyData?.inquiries_count || 0} inquiries</span>
+                                </div>
+                            </div>
+                            
+                            <Button 
+                                variant={isSaved ? "default" : "outline"} 
+                                size="icon" 
+                                onClick={() => setIsSaved(!isSaved)}
+                                className={cn(
+                                    "rounded-full shadow-sm hover:shadow-md transition-all",
+                                    isSaved && "bg-red-500 hover:bg-red-600 border-red-500"
+                                )}
+                            >
+                                <Heart className={cn("h-4 w-4", isSaved && "fill-white text-white")} />
                             </Button>
-                            <Button variant="outline" size="icon">
+                            <Button 
+                                variant="outline" 
+                                size="icon"
+                                className="rounded-full shadow-sm hover:shadow-md hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all"
+                            >
                                 <Share2 className="h-4 w-4" />
                             </Button>
                             {isEditing ? (
-                                <Button 
-                                    onClick={() => propertyData && updatePropertyMutation.mutate(propertyData)}
-                                    disabled={updatePropertyMutation.isPending}
-                                >
-                                    {updatePropertyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    <Save className="w-4 h-4 mr-2" />
-                                    Save Changes
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        variant="outline"
+                                        onClick={() => setIsEditing(false)}
+                                        className="rounded-full"
+                                    >
+                                        <X className="w-4 h-4 mr-2" />
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        onClick={() => propertyData && updatePropertyMutation.mutate(propertyData)}
+                                        disabled={updatePropertyMutation.isPending}
+                                        className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl rounded-full transition-all"
+                                    >
+                                        {updatePropertyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                        <Save className="w-4 h-4 mr-2" />
+                                        Save Changes
+                                    </Button>
+                                </div>
                             ) : (
                                 <>
-                                    <Button variant="outline" onClick={() => setIsEditing(true)}>
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={() => setIsEditing(true)}
+                                        className="rounded-full shadow-sm hover:shadow-md hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all"
+                                    >
                                         <Edit2 className="w-4 h-4 mr-2" />
                                         Edit Property
                                     </Button>
@@ -550,61 +620,79 @@ export default function PropertyDetailsPage() {
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Content */}
+            <div className="container mx-auto px-4 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
+                    <div className="lg:col-span-2 space-y-8">
                         {/* Image Gallery */}
-                        <Card className="overflow-hidden">
+                        <Card className="overflow-hidden border-0 shadow-xl bg-background">
                             <div className="relative">
-                                <div className="aspect-[16/10] overflow-hidden bg-gray-100">
+                                <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
                                     {images.length > 0 ? (
                                         <img 
                                             src={images[activeImage]} 
                                             alt="Property" 
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                                             onError={(e) => {
-                                                (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=800&fit=crop";
                                             }}
                                         />
                                     ) : (
-                                        <div className="flex items-center justify-center h-full">
-                                            <Home className="h-20 w-20 text-gray-300" />
+                                        <div className="flex flex-col items-center justify-center h-full">
+                                            <div className="p-6 rounded-full bg-muted/30 mb-4">
+                                                <Home className="h-16 w-16 text-muted-foreground/50" />
+                                            </div>
+                                            <p className="text-muted-foreground">No images available</p>
                                         </div>
                                     )}
                                 </div>
                                 
-                                {/* Image Navigation */}
+                                {/* Navigation Controls */}
                                 {images.length > 1 && (
                                     <>
                                         <Button
                                             variant="secondary"
                                             size="icon"
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur"
+                                            className="absolute left-6 top-1/2 -translate-y-1/2 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-lg hover:scale-110 transition-all duration-200 h-12 w-12"
                                             onClick={() => setActiveImage(prev => prev > 0 ? prev - 1 : images.length - 1)}
                                         >
-                                            <ChevronLeft className="h-4 w-4" />
+                                            <ChevronLeft className="h-6 w-6" />
                                         </Button>
                                         <Button
                                             variant="secondary"
                                             size="icon"
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur"
+                                            className="absolute right-6 top-1/2 -translate-y-1/2 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-lg hover:scale-110 transition-all duration-200 h-12 w-12"
                                             onClick={() => setActiveImage(prev => prev < images.length - 1 ? prev + 1 : 0)}
                                         >
-                                            <ChevronRight className="h-4 w-4" />
+                                            <ChevronRight className="h-6 w-6" />
                                         </Button>
                                     </>
                                 )}
                                 
-                                {/* Status Badge and Admin Controls */}
-                                <div className="absolute top-4 left-4 flex gap-2 flex-wrap max-w-md">
+                                {/* Status Badges */}
+                                <div className="absolute top-6 left-6 flex gap-3 flex-wrap max-w-md">
                                     {!isEditing && (
                                         <>
-                                            <Badge className={getCategoryBadge(propertyData?.category, propertyData?.sale_type).color}>
+                                            <Badge className={cn(
+                                                "px-4 py-2 text-sm font-medium shadow-xl backdrop-blur-md border-0",
+                                                propertyData?.category === 'sale' ? "bg-blue-500/90 text-white" : 
+                                                propertyData?.category === 'rent' ? "bg-green-500/90 text-white" :
+                                                "bg-purple-500/90 text-white"
+                                            )}>
                                                 {getCategoryBadge(propertyData?.category, propertyData?.sale_type).label}
                                             </Badge>
                                             {getSubcategoryBadge(propertyData?.subcategory) && (
-                                                <Badge className={getSubcategoryBadge(propertyData?.subcategory)!.color}>
+                                                <Badge className={cn(
+                                                    "shadow-xl backdrop-blur-md border-0 px-4 py-2 text-sm font-medium",
+                                                    getSubcategoryBadge(propertyData?.subcategory)!.color
+                                                )}>
+                                                    {getSubcategoryBadge(propertyData?.subcategory)!.icon && 
+                                                        React.createElement(
+                                                            getSubcategoryBadge(propertyData?.subcategory)!.icon,
+                                                            { className: "h-3.5 w-3.5 mr-1.5" }
+                                                        )
+                                                    }
                                                     {getSubcategoryBadge(propertyData?.subcategory)!.label}
                                                 </Badge>
                                             )}
@@ -644,19 +732,28 @@ export default function PropertyDetailsPage() {
                                 )}
                             </div>
                             
-                            {/* Thumbnail Strip with Edit Controls */}
-                            <div className="p-4 border-t">
-                                <div className="flex gap-2 overflow-x-auto items-center">
+                            {/* Thumbnail Gallery */}
+                            <div className="p-6 border-t border-border/50 bg-background">
+                                <div className="flex gap-3 overflow-x-auto items-center pb-2 scrollbar-hide">
                                     {images.map((img, index) => (
                                         <div key={index} className="relative group">
                                             <button
                                                 onClick={() => setActiveImage(index)}
                                                 className={cn(
-                                                    "relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all",
-                                                    activeImage === index ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-gray-300"
+                                                    "relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-300",
+                                                    activeImage === index 
+                                                        ? "border-primary shadow-lg shadow-primary/25 scale-105" 
+                                                        : "border-transparent hover:border-primary/50 hover:shadow-md opacity-70 hover:opacity-100"
                                                 )}
                                             >
-                                                <img src={img} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                                                <img 
+                                                    src={img} 
+                                                    alt={`Thumbnail ${index + 1}`} 
+                                                    className="w-full h-full object-cover" 
+                                                />
+                                                {activeImage === index && (
+                                                    <div className="absolute inset-0 bg-primary/10" />
+                                                )}
                                             </button>
                                             {isEditing && (
                                                 <Button
@@ -702,20 +799,42 @@ export default function PropertyDetailsPage() {
                         {/* Property Information Tabs */}
                         <Tabs defaultValue="overview" className="w-full">
                             <TabsList className={cn(
-                                "grid w-full",
+                                "grid w-full bg-muted/30 border-0 p-1.5 rounded-xl shadow-sm",
                                 isEditing ? "grid-cols-5" : "grid-cols-4"
                             )}>
-                                <TabsTrigger value="overview">Overview</TabsTrigger>
-                                <TabsTrigger value="details">Details</TabsTrigger>
-                                <TabsTrigger value="amenities">Amenities</TabsTrigger>
-                                <TabsTrigger value="location">Location</TabsTrigger>
-                                {isEditing && <TabsTrigger value="images">Images</TabsTrigger>}
+                                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
+                                    <FileText className="h-4 w-4 mr-2 hidden sm:block" />
+                                    Overview
+                                </TabsTrigger>
+                                <TabsTrigger value="details" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
+                                    <Ruler className="h-4 w-4 mr-2 hidden sm:block" />
+                                    Details
+                                </TabsTrigger>
+                                <TabsTrigger value="amenities" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
+                                    <Shield className="h-4 w-4 mr-2 hidden sm:block" />
+                                    Amenities
+                                </TabsTrigger>
+                                <TabsTrigger value="location" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
+                                    <MapPin className="h-4 w-4 mr-2 hidden sm:block" />
+                                    Location
+                                </TabsTrigger>
+                                {isEditing && (
+                                    <TabsTrigger value="images" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md transition-all">
+                                        <Upload className="h-4 w-4 mr-2 hidden sm:block" />
+                                        Images
+                                    </TabsTrigger>
+                                )}
                             </TabsList>
                             
                             <TabsContent value="overview" className="mt-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Property Description</CardTitle>
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-xl font-bold">Property Description</CardTitle>
+                                            <div className="p-2 rounded-lg bg-primary/10">
+                                                <FileText className="h-5 w-5 text-primary" />
+                                            </div>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         {isEditing ? (
@@ -784,7 +903,7 @@ export default function PropertyDetailsPage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    {propertyData?.category === 'sale' ? (
+                                                    {propertyData?.category === 'sale' && (
                                                         <div>
                                                             <Label htmlFor="sale_type">Sale Type</Label>
                                                             <Select 
@@ -800,41 +919,24 @@ export default function PropertyDetailsPage() {
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
-                                                    ) : (
-                                                        <div>
-                                                            <Label htmlFor="subcategory">Subcategory</Label>
-                                                            <Select 
-                                                                value={propertyData?.subcategory || 'none'} 
-                                                                onValueChange={(value) => handleSelectChange('subcategory', value === 'none' ? null : value)}
-                                                            >
-                                                                <SelectTrigger className="mt-1">
-                                                                    <SelectValue placeholder="Select subcategory" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="none">None</SelectItem>
-                                                                    <SelectItem value="eh_living">EH Living</SelectItem>
-                                                                    <SelectItem value="eh_verified">EH Verified</SelectItem>
-                                                                    <SelectItem value="eh_signature">EH Signature</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
                                                     )}
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4 mt-4">
                                                     <div>
-                                                        <Label htmlFor="subcategory">Subcategory</Label>
+                                                        <Label htmlFor="subcategory">EH Category (Premium)</Label>
                                                         <Select 
                                                             value={propertyData?.subcategory || 'none'} 
                                                             onValueChange={(value) => handleSelectChange('subcategory', value === 'none' ? null : value)}
                                                         >
                                                             <SelectTrigger className="mt-1">
-                                                                <SelectValue placeholder="Select subcategory" />
+                                                                <SelectValue placeholder="Select EH Category" />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="none">None</SelectItem>
-                                                                <SelectItem value="eh_living">EH Living</SelectItem>
-                                                                <SelectItem value="eh_verified">EH Verified</SelectItem>
-                                                                <SelectItem value="eh_signature">EH Signature</SelectItem>
+                                                                <SelectItem value="eh_commercial">EH Commercial - Premium Commercial Properties</SelectItem>
+                                                                <SelectItem value="eh_verified">EH Verified - Verified Premium Properties</SelectItem>
+                                                                <SelectItem value="eh_signature">EH Signature - Luxury Signature Collection</SelectItem>
+                                                                <SelectItem value="eh_dubai">EH Dubai - Exclusive Dubai Properties</SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
@@ -865,9 +967,14 @@ export default function PropertyDetailsPage() {
                             </TabsContent>
                             
                             <TabsContent value="details" className="mt-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Property Specifications</CardTitle>
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-xl font-bold">Property Specifications</CardTitle>
+                                            <div className="p-2 rounded-lg bg-primary/10">
+                                                <Ruler className="h-5 w-5 text-primary" />
+                                            </div>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {isEditing ? (
@@ -984,29 +1091,47 @@ export default function PropertyDetailsPage() {
                                             </>
                                         ) : (
                                             <>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Property Type</p>
-                                                    <p className="font-medium capitalize">{propertyData?.property_type || 'N/A'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Building2 className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Property Type</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg capitalize">{propertyData?.property_type || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Year Built</p>
-                                                    <p className="font-medium">{propertyData?.year_built || 'N/A'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Calendar className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Year Built</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg">{propertyData?.year_built || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Total Floors</p>
-                                                    <p className="font-medium">{propertyData?.total_floors || 'N/A'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Building2 className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Total Floors</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg">{propertyData?.total_floors || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Floor Number</p>
-                                                    <p className="font-medium">{propertyData?.floor_number || 'Ground'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Home className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Floor Number</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg">{propertyData?.floor_number || 'Ground'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Facing</p>
-                                                    <p className="font-medium capitalize">{propertyData?.facing_direction?.replace('_', ' ') || 'N/A'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <Compass className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Facing</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg capitalize">{propertyData?.facing_direction?.replace('_', ' ') || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Possession</p>
-                                                    <p className="font-medium capitalize">{propertyData?.possession_status?.replace('_', ' ') || 'N/A'}</p>
+                                                <div className="p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <CalendarClock className="h-4 w-4 text-primary" />
+                                                        <p className="text-xs text-muted-foreground font-medium">Possession</p>
+                                                    </div>
+                                                    <p className="font-semibold text-lg capitalize">{propertyData?.possession_status?.replace('_', ' ') || 'N/A'}</p>
                                                 </div>
                                             </>
                                         )}
@@ -1015,9 +1140,14 @@ export default function PropertyDetailsPage() {
                             </TabsContent>
                             
                             <TabsContent value="amenities" className="mt-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Amenities & Features</CardTitle>
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-xl font-bold">Amenities & Features</CardTitle>
+                                            <div className="p-2 rounded-lg bg-primary/10">
+                                                <Shield className="h-5 w-5 text-primary" />
+                                            </div>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         {isEditing ? (
@@ -1074,9 +1204,13 @@ export default function PropertyDetailsPage() {
                                                     {Array.isArray(propertyData?.amenities) && propertyData.amenities.map((amenity, index) => {
                                                         const Icon = amenityIcons[amenity] || amenityIcons.Default;
                                                         return (
-                                                            <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-accent/50">
-                                                                <Icon className="h-4 w-4 text-primary" />
-                                                                <span className="text-sm">{amenity}</span>
+                                                            <div key={index} className="group p-3 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 hover:from-primary/10 hover:to-primary/15 hover:shadow-md transition-all duration-300">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                                                                        <Icon className="h-4 w-4 text-primary" />
+                                                                    </div>
+                                                                    <span className="text-sm font-medium">{amenity}</span>
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}
@@ -1091,9 +1225,14 @@ export default function PropertyDetailsPage() {
                             </TabsContent>
                             
                             <TabsContent value="location" className="mt-6">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Location Details</CardTitle>
+                                <Card className="border-0 shadow-lg">
+                                    <CardHeader className="pb-4">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-xl font-bold">Location Details</CardTitle>
+                                            <div className="p-2 rounded-lg bg-primary/10">
+                                                <MapPin className="h-5 w-5 text-primary" />
+                                            </div>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         {isEditing ? (
@@ -1123,42 +1262,60 @@ export default function PropertyDetailsPage() {
                                             />
                                         ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Address</p>
+                                                <div className="p-4 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <MapPin className="h-4 w-4 text-primary" />
+                                                        <p className="text-sm text-muted-foreground font-medium">Address</p>
+                                                    </div>
                                                     <p className="font-medium">{propertyData?.address || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">Locality</p>
+                                                <div className="p-4 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Home className="h-4 w-4 text-primary" />
+                                                        <p className="text-sm text-muted-foreground font-medium">Locality</p>
+                                                    </div>
                                                     <p className="font-medium">{propertyData?.locality || propertyData?.neighborhood || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">City</p>
+                                                <div className="p-4 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Building2 className="h-4 w-4 text-primary" />
+                                                        <p className="text-sm text-muted-foreground font-medium">City</p>
+                                                    </div>
                                                     <p className="font-medium">{propertyData?.city || 'N/A'}</p>
                                                 </div>
-                                                <div className="space-y-1">
-                                                    <p className="text-sm text-muted-foreground">State</p>
+                                                <div className="p-4 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border/50 hover:shadow-md transition-all">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <MapPin className="h-4 w-4 text-primary" />
+                                                        <p className="text-sm text-muted-foreground font-medium">State</p>
+                                                    </div>
                                                     <p className="font-medium">{propertyData?.state || 'N/A'}</p>
                                                 </div>
                                             </div>
                                         )}
                                         
                                         {/* Interactive Map */}
-                                        <div className="h-96 rounded-lg overflow-hidden border">
-                                            <PropertyMap
-                                                latitude={propertyData?.latitude}
-                                                longitude={propertyData?.longitude}
-                                                address={propertyData?.address}
-                                                isEditable={isEditing}
-                                                onLocationChange={(lat, lng) => {
-                                                    if (isEditing) {
-                                                        setPropertyData({
-                                                            ...propertyData,
-                                                            latitude: lat,
-                                                            longitude: lng
-                                                        });
-                                                    }
-                                                }}
-                                            />
+                                        <div className="mt-6">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Compass className="h-4 w-4 text-primary" />
+                                                <p className="text-sm font-medium text-muted-foreground">Interactive Map View</p>
+                                            </div>
+                                            <div className="h-96 rounded-xl overflow-hidden border-2 border-border/50 shadow-lg">
+                                                <PropertyMap
+                                                    latitude={propertyData?.latitude}
+                                                    longitude={propertyData?.longitude}
+                                                    address={propertyData?.address}
+                                                    isEditable={isEditing}
+                                                    onLocationChange={(lat, lng) => {
+                                                        if (isEditing) {
+                                                            setPropertyData({
+                                                                ...propertyData,
+                                                                latitude: lat,
+                                                                longitude: lng
+                                                            });
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -1193,37 +1350,59 @@ export default function PropertyDetailsPage() {
                         </Tabs>
                     </div>
 
-                    {/* Right Column: Price & Key Details */}
+                    {/* Right Column: Property Information */}
                     <div className="space-y-6">
                         {/* Price Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Price Details</CardTitle>
+                        <Card className="border-0 shadow-xl bg-background overflow-hidden">
+                            <CardHeader className="pb-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-xl font-bold">Investment Value</CardTitle>
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <IndianRupee className="h-5 w-5 text-primary" />
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div>
-                                    <p className="text-3xl font-bold text-primary">
+                                <div className="p-4 rounded-xl bg-background shadow-inner border border-border/50">
+                                    <p className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                                         {formatPrice(propertyData?.price)}
                                     </p>
+                                    {propertyData?.category === 'rent' && (
+                                        <p className="text-sm font-medium text-muted-foreground mt-1">per month</p>
+                                    )}
                                     {propertyData?.price_per_sqft && (
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            ₹{propertyData.price_per_sqft.toLocaleString()} per sqft
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+                                            <TrendingUp className="h-4 w-4 text-green-500" />
+                                            <p className="text-sm font-medium text-muted-foreground">
+                                                ₹{propertyData.price_per_sqft.toLocaleString()} per sqft
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
-                                {propertyData?.maintenance_charge && (
-                                    <div className="pt-3 border-t">
-                                        <p className="text-sm text-muted-foreground">Maintenance</p>
-                                        <p className="font-medium">₹{propertyData.maintenance_charge.toLocaleString()}/month</p>
+                                {propertyData?.maintenance_fee && (
+                                    <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-muted-foreground">Maintenance</span>
+                                            <span className="font-semibold">₹{propertyData.maintenance_fee.toLocaleString()}/mo</span>
+                                        </div>
                                     </div>
                                 )}
+                                <Button className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all">
+                                    <Phone className="h-5 w-5 mr-2" />
+                                    Contact Agent
+                                </Button>
                             </CardContent>
                         </Card>
 
                         {/* Key Features Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Key Features</CardTitle>
+                        <Card className="border-0 shadow-xl bg-background">
+                            <CardHeader className="pb-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-xl font-bold">Property Highlights</CardTitle>
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <Home className="h-5 w-5 text-primary" />
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-2 gap-4">
@@ -1282,40 +1461,61 @@ export default function PropertyDetailsPage() {
                             </CardContent>
                         </Card>
 
-
-                        {/* Property Stats */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Property Statistics</CardTitle>
+                        {/* Property Stats Card */}
+                        <Card className="border-0 shadow-xl bg-background overflow-hidden">
+                            <CardHeader className="pb-4">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-xl font-bold">Engagement Metrics</CardTitle>
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <TrendingUp className="h-5 w-5 text-primary" />
+                                    </div>
+                                </div>
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Eye className="h-4 w-4" />
-                                        Views
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Eye className="h-4 w-4 text-blue-500" />
+                                            <span className="text-xs font-medium text-blue-500">+12%</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-blue-500">{propertyData?.views_count || 0}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Total Views</p>
                                     </div>
-                                    <span className="font-medium">{propertyData?.views_count || 0}</span>
+                                    <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <MessageSquare className="h-4 w-4 text-green-500" />
+                                            <span className="text-xs font-medium text-green-500">Active</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-green-500">{propertyData?.inquiries_count || 0}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Inquiries</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-gradient-to-br from-red-500/10 to-red-500/5 border border-red-500/20">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Heart className="h-4 w-4 text-red-500" />
+                                            <span className="text-xs font-medium text-red-500">Popular</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-red-500">{propertyData?.favorites_count || 0}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Saved</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-500/5 border border-purple-500/20">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Share2 className="h-4 w-4 text-purple-500" />
+                                            <span className="text-xs font-medium text-purple-500">Viral</span>
+                                        </div>
+                                        <p className="text-2xl font-bold text-purple-500">{propertyData?.shares_count || 0}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Shares</p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <MessageSquare className="h-4 w-4" />
-                                        Inquiries
+                                <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Bell className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-sm text-muted-foreground">Listed on</span>
+                                        </div>
+                                        <span className="text-sm font-medium">
+                                            {propertyData?.created_at ? format(new Date(propertyData.created_at), 'MMM dd, yyyy') : 'N/A'}
+                                        </span>
                                     </div>
-                                    <span className="font-medium">{propertyData?.inquiries_count || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Heart className="h-4 w-4" />
-                                        Saved
-                                    </div>
-                                    <span className="font-medium">{propertyData?.favorites_count || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Share2 className="h-4 w-4" />
-                                        Shares
-                                    </div>
-                                    <span className="font-medium">{propertyData?.shares_count || 0}</span>
                                 </div>
                             </CardContent>
                         </Card>
