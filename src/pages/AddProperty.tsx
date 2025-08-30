@@ -105,7 +105,6 @@ export default function AddPropertyPage() {
     property_condition: 'new',
     
     // Marketing
-    is_featured: false,
     meta_title: '',
     meta_description: '',
   });
