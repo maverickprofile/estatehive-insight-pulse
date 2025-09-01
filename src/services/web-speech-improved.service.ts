@@ -133,8 +133,8 @@ class ImprovedWebSpeechService {
       } catch (conversionError) {
         console.warn('Audio conversion failed, using safe handler:', conversionError);
         // Use safe audio handler for conversion
-        const { processedBlob } = await safeAudioHandler.processAudioSafely(audioBlob);
-        processedBlob = processedBlob;
+        const safeResult = await safeAudioHandler.processAudioSafely(audioBlob);
+        processedBlob = safeResult.processedBlob;
       }
     }
 
