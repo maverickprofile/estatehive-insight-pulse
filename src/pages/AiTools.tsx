@@ -31,12 +31,9 @@ type AITool = {
 };
 
 const aiTools: AITool[] = [
-    { id: 'whatsappAI', title: 'WhatsApp QAI Agent', description: 'AI-powered chatbot for WhatsApp Business API integration.', icon: MessageCircle, status: 'Beta Ready', color: 'from-green-500 to-green-500', category: 'Communication', features: ['Handles initial lead inquiries 24/7', 'Qualifies leads before agent assignment', 'Multi-language support (Hindi, English)'], configDetails: { info: "Integrates with the WhatsApp Business API to automate conversations. Requires a Meta Developer account and API credentials.", apiKeyRequired: true, setupSteps: ["Get API Key from Meta for Developers.", "Enter the key below and save.", "Configure welcome messages and lead questions."] } },
-    { id: 'leadScoring', title: 'Smart Lead Scoring', description: 'AI model scoring leads based on conversion probability.', icon: Star, status: 'Active', color: 'from-yellow-500 to-yellow-500', category: 'Analytics', features: ['Analyzes budget, location, and history', 'Real-time scoring updates', 'Helps agents prioritize high-potential leads'], configDetails: { info: "Our proprietary AI analyzes lead data to predict conversion probability. This feature is active by default and learns over time.", apiKeyRequired: false, setupSteps: ["Ensure lead data is clean and complete.", "Monitor lead scores in the Leads panel.", "The model automatically improves with more data."] } },
+    { id: 'whatsappAI', title: 'Automations', description: 'AI-powered automation workflows for business processes.', icon: MessageCircle, status: 'Beta Ready', color: 'from-green-500 to-green-500', category: 'Communication', features: ['Build custom automation workflows', 'Multi-channel integrations', 'Visual workflow builder'], configDetails: { info: "Create powerful automation workflows with our visual builder. Connect multiple services and automate repetitive tasks.", apiKeyRequired: true, setupSteps: ["Design your workflow using the visual builder.", "Configure integrations and API keys.", "Test and deploy your automation."] } },
     { id: 'voiceToCRM', title: 'Voice-to-CRM Logger', description: 'Record voice memos that auto-transcribe to CRM.', icon: Mic, status: 'Active', color: 'from-purple-500 to-purple-500', category: 'Productivity', features: ['Tap to record in client profile', 'AI transcribes and summarizes conversations', 'Auto-logs entries in client history'], configDetails: { info: "Uses advanced speech-to-text technology to transcribe your voice notes directly into client records, saving you time.", apiKeyRequired: false, setupSteps: ["Enable microphone permissions in your browser.", "Go to a client's profile page.", "Tap the microphone icon to start recording."] } },
-    { id: 'autoDocGen', title: 'Auto Document Generation', description: 'Generate ready-to-sign PDFs from templates.', icon: FileText, status: 'Beta Ready', color: 'from-indigo-500 to-indigo-500', category: 'Documentation', features: ['Auto-populates client and property data', 'Legally compliant templates', 'Digital signature integration ready'], configDetails: { info: "Automatically generates sales agreements, rental contracts, and other documents using pre-approved templates.", apiKeyRequired: false, setupSteps: ["Go to the 'Templates' section in Settings.", "Customize your document templates.", "Use the 'Generate Document' button on property or client pages."] } },
     { id: 'nlpSummarizer', title: 'NLP Note Summarizer', description: 'Advanced summarization of client interactions.', icon: Bot, status: 'Active', color: 'from-teal-500 to-teal-500', category: 'Analytics', features: ['Extracts key points from long notes', 'Sentiment analysis of interactions', 'Identifies action items and tasks'], configDetails: { info: "Uses Natural Language Processing to summarize long text notes, identifying key points, sentiment, and action items.", apiKeyRequired: false, setupSteps: ["This feature is automatically active.", "Write detailed notes in the client interaction logs.", "A summary will be automatically generated below your note."] } },
-    { id: 'hivePassport', title: 'Hive Passport', description: 'Secure client identity and document verification.', icon: Shield, status: 'Coming Soon', color: 'from-red-500 to-red-500', category: 'Security', features: ['Integrates with DigiLocker', 'Verifies PAN, Aadhaar, and property records', 'Secure, encrypted document storage'], configDetails: { info: "Coming in Q2 2025, this feature will provide secure, one-click identity and document verification for clients.", apiKeyRequired: false, setupSteps: ["This feature is not yet available."] } },
 ];
 
 // --- Supabase Functions ---
@@ -220,6 +217,16 @@ export default function AiToolsPage() {
   };
 
   const handleConfigure = (tool: AITool) => {
+      // Navigate to specific tool workflow pages for supported tools
+      if (tool.id === 'whatsappAI') {
+          window.location.hash = '/ai-tools/whatsapp-qai';
+          return;
+      }
+      if (tool.id === 'voiceToCRM') {
+          window.location.hash = '/ai-tools/voice-to-crm';
+          return;
+      }
+      // For other tools, show the configuration modal
       setSelectedTool(tool);
       setIsModalOpen(true);
   };
@@ -250,17 +257,17 @@ export default function AiToolsPage() {
           <div>
             <h3 className="font-semibold mb-2">Active Integrations:</h3>
             <ul className="space-y-1 text-sm opacity-90">
-              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> WhatsApp Business API configured</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Automation workflows configured</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> OpenAI GPT-4 integration active</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Real-time lead scoring operational</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Voice transcription operational</li>
             </ul>
           </div>
           <div>
             <h3 className="font-semibold mb-2">Coming Soon:</h3>
             <ul className="space-y-1 text-sm opacity-90">
-              <li className="flex items-center gap-2"><Clock className="w-4 h-4" /> DigiLocker API integration (Q2 2025)</li>
+              <li className="flex items-center gap-2"><Clock className="w-4 h-4" /> More automation templates (Q2 2025)</li>
               <li className="flex items-center gap-2"><Clock className="w-4 h-4" /> Advanced NLP models (Q3 2025)</li>
-              <li className="flex items-center gap-2"><Clock className="w-4 h-4" /> Legal compliance automation (Q4 2025)</li>
+              <li className="flex items-center gap-2"><Clock className="w-4 h-4" /> Multi-language support (Q4 2025)</li>
             </ul>
           </div>
         </div>
