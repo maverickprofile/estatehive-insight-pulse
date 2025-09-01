@@ -20,6 +20,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-if (!!watiBaseUrl !== !!watiApiKey) {
-  throw new Error('Missing WATI environment variables');
+// WATI is optional - only validate if one is provided
+if ((watiBaseUrl && !watiApiKey) || (!watiBaseUrl && watiApiKey)) {
+  console.warn('WATI configuration incomplete - both VITE_WATI_BASE_URL and VITE_WATI_API_KEY must be provided together');
 }
