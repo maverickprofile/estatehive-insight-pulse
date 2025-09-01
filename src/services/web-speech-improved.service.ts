@@ -57,6 +57,11 @@ class ImprovedWebSpeechService {
       this.recognition.maxAlternatives = 3; // Get multiple alternatives
       this.recognition.lang = 'en-US'; // Default language
       
+      // Add abort handler to properly cleanup
+      this.recognition.onend = () => {
+        this.isListening = false;
+      };
+      
       console.log('Web Speech API initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Web Speech API:', error);
@@ -286,10 +291,12 @@ class ImprovedWebSpeechService {
         }
       };
 
-      // Start recognition
+      // Start recognition (ensure we're not already listening)
       try {
-        this.recognition.start();
-        this.isListening = true;
+        if (!this.isListening) {
+          this.recognition.start();
+          this.isListening = true;
+        }
 
         // Play audio with user gesture handling
         audio.play().catch((playError) => {
@@ -386,6 +393,7 @@ class ImprovedWebSpeechService {
       };
 
       this.recognition.onend = () => {
+        this.isListening = false;
         if (finalTranscript) {
           resolve({
             text: finalTranscript.trim(),
@@ -398,8 +406,11 @@ class ImprovedWebSpeechService {
         }
       };
 
-      // Start recognition
-      this.recognition.start();
+      // Start recognition (ensure we're not already listening)
+      if (!this.isListening) {
+        this.recognition.start();
+        this.isListening = true;
+      }
 
       // Play audio through speakers
       const source = this.audioContext.createBufferSource();
@@ -468,6 +479,7 @@ class ImprovedWebSpeechService {
       };
 
       this.recognition.onend = () => {
+        this.isListening = false;
         if (finalTranscript) {
           resolve({
             text: finalTranscript.trim(),
@@ -480,8 +492,11 @@ class ImprovedWebSpeechService {
         }
       };
 
-      // Start recognition with media stream
-      this.recognition.start();
+      // Start recognition with media stream (ensure we're not already listening)
+      if (!this.isListening) {
+        this.recognition.start();
+        this.isListening = true;
+      }
       source.start(0);
 
       source.onended = () => {

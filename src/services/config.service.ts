@@ -97,8 +97,13 @@ class ConfigService {
         .eq('organization_id', organizationId)
         .single();
       
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading organization settings:', error);
+      // Handle missing table (PGRST205) or no data (PGRST116) gracefully
+      if (error) {
+        if (error.code === 'PGRST116' || error.code === 'PGRST205') {
+          console.log('Organization settings table not found or empty, using environment configuration');
+        } else {
+          console.error('Error loading organization settings:', error);
+        }
         return;
       }
       
@@ -187,6 +192,10 @@ class ConfigService {
    * Get OpenAI API key
    */
   getOpenAIApiKey(): string | undefined {
+    // Return undefined if the key is empty or just whitespace
+    if (!this.config.openaiApiKey || this.config.openaiApiKey.trim() === '') {
+      return undefined;
+    }
     return this.config.openaiApiKey;
   }
 

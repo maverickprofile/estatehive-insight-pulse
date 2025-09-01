@@ -84,14 +84,15 @@ class AIProcessingService {
       const userPrompt = this.buildUserPrompt(text, clientInfo);
 
       const response = await this.openai.chat.completions.create({
-        model: options.model || 'gpt-4',
+        model: options.model || 'gpt-3.5-turbo',  // Use gpt-3.5-turbo which supports JSON mode
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: systemPrompt + '\n\nIMPORTANT: You must respond with valid JSON only.' },
           { role: 'user', content: userPrompt }
         ],
         temperature: options.temperature || 0.3,
         max_tokens: options.maxTokens || 500,
-        response_format: { type: 'json_object' }
+        // Remove response_format as it's not supported with all models
+        // response_format: { type: 'json_object' }
       });
 
       const result = JSON.parse(response.choices[0].message.content || '{}');

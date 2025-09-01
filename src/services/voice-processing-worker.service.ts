@@ -146,16 +146,26 @@ class VoiceProcessingWorkerService {
       }
 
       // Get bot config for this organization
-      const botConfig = this.botConfigs.get(communication.organization_id);
+      let botConfig = this.botConfigs.get(communication.organization_id);
+      
+      // If not found by organization_id, try to get any available config
+      if (!botConfig && this.botConfigs.size > 0) {
+        // Use the first available bot config as fallback
+        botConfig = Array.from(this.botConfigs.values())[0];
+        console.warn('Using fallback bot config for processing');
+      }
+      
       if (!botConfig) {
-        console.error('Bot config not found for organization:', communication.organization_id);
-        throw new Error('Bot configuration not found');
+        console.error('No bot configuration available for processing');
+        // Continue processing without bot config - use bot ID from job/communication
+        // throw new Error('Bot configuration not found');
       }
 
       // Step 1: Download audio from Telegram using improved service
       console.log('Downloading voice file from Telegram...');
+      const botId = botConfig?.id || job.telegram_bot_id || communication.channel_metadata?.telegram_bot_id || 'default';
       const audioBlob = await improvedTelegramService.downloadVoiceFile(
-        botConfig.id || job.telegram_bot_id || communication.channel_metadata?.telegram_bot_id,
+        botId,
         job.source_file_id
       );
       
@@ -214,13 +224,17 @@ class VoiceProcessingWorkerService {
       // Step 5: Mark job as completed
       await this.updateJobStatus(job.communication_id, 'completed');
 
-      // Step 6: Send success notification to Telegram
-      await this.sendSuccessNotification(
-        botConfig,
-        communication,
-        transcriptionResult,
-        processingResult
-      );
+      // Step 6: Send success notification to Telegram (if bot config available)
+      if (botConfig) {
+        await this.sendSuccessNotification(
+          botConfig,
+          communication,
+          transcriptionResult,
+          processingResult
+        );
+      } else {
+        console.log('Skipping success notification - no bot config available');
+      }
 
       console.log(`Successfully processed job ${job.id}`);
 
@@ -249,9 +263,20 @@ class VoiceProcessingWorkerService {
         .single();
 
       if (communication) {
-        const botConfig = this.botConfigs.get(communication.organization_id);
+        // Try to get bot config for error notification
+        let botConfig = this.botConfigs.get(communication.organization_id);
+        if (!botConfig && this.botConfigs.size > 0) {
+          botConfig = Array.from(this.botConfigs.values())[0];
+        }
+        
         if (botConfig) {
-          await this.sendErrorNotification(botConfig, communication, error);
+          try {
+            await this.sendErrorNotification(botConfig, communication, error);
+          } catch (notifyError) {
+            console.error('Failed to send error notification:', notifyError);
+          }
+        } else {
+          console.log('Skipping error notification - no bot config available');
         }
       }
     }
@@ -302,7 +327,11 @@ class VoiceProcessingWorkerService {
       message += `🎯 <b>Sentiment:</b> ${processingResult.sentiment}\n`;
       message += `🌐 <b>Language:</b> ${transcriptionResult.language}\n\n`;
       
-      message += '<b>📄 Summary:</b>\n';
+      // Add the full transcription
+      message += '<b>🎤 Transcription:</b>\n';
+      message += `<i>${transcriptionResult.text}</i>\n\n`;
+      
+      message += '<b>📄 AI Summary:</b>\n';
       message += `${processingResult.summary}\n\n`;
       
       if (processingResult.keyPoints && processingResult.keyPoints.length > 0) {

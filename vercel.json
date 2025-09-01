@@ -2,12 +2,19 @@
   "functions": {
     "api/telegram-proxy.js": {
       "maxDuration": 30
+    },
+    "api/telegram-webhook.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
     {
       "source": "/api/telegram/download",
       "destination": "/api/telegram-proxy"
+    },
+    {
+      "source": "/api/telegram/webhook",
+      "destination": "/api/telegram-webhook"
     }
   ],
   "headers": [

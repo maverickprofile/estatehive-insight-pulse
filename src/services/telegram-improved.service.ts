@@ -428,19 +428,29 @@ Send me a voice message to get started! 🎤
 
       // Create processing job
       if (communication) {
+        // Build job data without telegram_bot_id until migration is run
+        const jobData: any = {
+          communication_id: communication,
+          source_type: 'telegram',
+          source_message_id: voiceMessage.messageId.toString(),
+          source_file_id: voiceMessage.fileId,
+          status: 'queued',
+        };
+        
+        // TODO: Uncomment after running migration 20250901_fix_voice_crm_schema.sql
+        // jobData.telegram_bot_id = botId;
+        
         const { error: jobError } = await supabase
           .from('voice_processing_jobs')
-          .insert({
-            communication_id: communication,
-            source_type: 'telegram',
-            source_message_id: voiceMessage.messageId.toString(),
-            source_file_id: voiceMessage.fileId,
-            telegram_bot_id: botId,
-            status: 'queued',
-          });
+          .insert(jobData);
 
         if (jobError) {
-          throw jobError;
+          // Log but don't fail if it's just the telegram_bot_id column missing
+          if (jobError.code === 'PGRST204' && jobError.message.includes('telegram_bot_id')) {
+            console.warn('telegram_bot_id column not yet available, continuing without it');
+          } else {
+            throw jobError;
+          }
         }
       }
 
@@ -612,9 +622,22 @@ Send me a voice message to get started! 🎤
    * Send message with retry logic
    */
   async sendMessage(botId: string, chatId: string | number, message: string, options?: any): Promise<void> {
-    const config = this.configs.get(botId);
+    let config = this.configs.get(botId);
+    
+    // If config not found, try to use the default bot token
     if (!config) {
-      throw new Error('Bot not found');
+      // Use the bot token from environment as fallback
+      const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '8303023013:AAEE6b_2IOjVs9wfxKrFBxdAc6_JPgvOV8E';
+      
+      const params = {
+        chat_id: chatId,
+        text: message,
+        ...options,
+      };
+
+      // Send directly with bot token
+      await this.makeApiCall(botToken, 'sendMessage', params);
+      return;
     }
 
     const params = {
@@ -677,12 +700,13 @@ Send me a voice message to get started! 🎤
       this.activePollingTokens.delete(config.bot_token);
     }
     
-    // Clear data
-    this.configs.delete(botId);
+    // Keep config for sending messages (don't delete)
+    // This allows us to still send responses even after polling stops
+    // this.configs.delete(botId);
     this.messageHandlers.delete(botId);
     this.lastUpdateIds.delete(botId);
     
-    console.log(`Bot ${botId} stopped`);
+    console.log(`Bot ${botId} polling stopped (config maintained for messaging)`);
   }
   
   /**

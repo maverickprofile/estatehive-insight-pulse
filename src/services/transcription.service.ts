@@ -84,7 +84,7 @@ class TranscriptionService {
       }
     }
     
-    // Use OpenAI if configured
+    // Check if OpenAI is available and should be used
     if (!this.isInitialized || !this.openai) {
       // Try Web Speech as last resort
       if (improvedWebSpeech.isAvailable()) {
@@ -92,6 +92,13 @@ class TranscriptionService {
         return await this.transcribeWithWebSpeech(audioBuffer, options);
       }
       throw new Error('No transcription service available');
+    }
+
+    // If we reach here, OpenAI is available and configured to be used
+    // Since provider is already defined above, we don't need to redeclare it
+    if (provider === 'web-speech' && improvedWebSpeech.isAvailable()) {
+      console.log('Web Speech API preferred, using it instead of OpenAI');
+      return await this.transcribeWithWebSpeech(audioBuffer, options);
     }
 
     try {
