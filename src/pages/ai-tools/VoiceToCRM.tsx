@@ -59,11 +59,15 @@ import {
   StopCircle,
   Save,
   Wifi,
-  WifiOff
+  WifiOff,
+  Search,
+  List,
+  FileAudio
 } from 'lucide-react';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodeLibrary from '@/components/workflow/NodeLibrary';
 import NodeEditor from '@/components/workflow/NodeEditor';
+import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
 import { useWorkflowStore } from '@/stores/workflowStore';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
@@ -398,6 +402,9 @@ export default function VoiceToCRM() {
   const [botConfig, setBotConfig] = useState<TelegramBotConfig | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [recentCommunications, setRecentCommunications] = useState<any[]>([]);
+  const [allVoiceNotes, setAllVoiceNotes] = useState<any[]>([]);
+  const [voiceNotesFilter, setVoiceNotesFilter] = useState('');
+  const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalTranscriptions: 0,
     todayTranscriptions: 0,
@@ -425,9 +432,18 @@ export default function VoiceToCRM() {
 
   // Initialize services on mount
   useEffect(() => {
+    // Add welcome log
+    addRealtimeLog({
+      type: 'success',
+      message: 'Voice-to-CRM system started',
+      timestamp: new Date().toISOString(),
+      details: 'System ready for voice processing'
+    });
+    
     initializeServices();
     loadSavedConfig();
     loadRecentCommunications();
+    loadAllVoiceNotes();
     loadStatistics();
     
     // Cleanup on unmount
@@ -438,6 +454,12 @@ export default function VoiceToCRM() {
 
   const initializeServices = async () => {
     try {
+      addRealtimeLog({
+        type: 'info',
+        message: 'Initializing Voice-to-CRM services...',
+        timestamp: new Date().toISOString()
+      });
+      
       // Get current user for organization context
       const { data: { user } } = await supabase.auth.getUser();
       const organizationId = user?.id;
@@ -454,12 +476,27 @@ export default function VoiceToCRM() {
       // Start voice processing worker with organization ID
       await voiceProcessingWorker.start(botConfig ? [botConfig] : [], organizationId);
       
+      addRealtimeLog({
+        type: 'success',
+        message: 'All services initialized successfully',
+        timestamp: new Date().toISOString(),
+        details: 'Voice transcription and AI processing ready'
+      });
+      
       toast({
         title: 'Services Initialized',
         description: 'Voice transcription and AI processing ready with improved services',
       });
     } catch (error: any) {
       console.error('Failed to initialize services:', error);
+      
+      addRealtimeLog({
+        type: 'warning',
+        message: 'Some services failed to initialize',
+        timestamp: new Date().toISOString(),
+        details: error.message || 'Please check API keys'
+      });
+      
       toast({
         title: 'Warning',
         description: 'Some services may not be available. Please check API keys.',
@@ -470,9 +507,20 @@ export default function VoiceToCRM() {
 
   const loadSavedConfig = async () => {
     try {
+      addRealtimeLog({
+        type: 'info',
+        message: 'Loading saved configuration...',
+        timestamp: new Date().toISOString()
+      });
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         console.log('User not authenticated');
+        addRealtimeLog({
+          type: 'warning',
+          message: 'User not authenticated, loading default template',
+          timestamp: new Date().toISOString()
+        });
         loadDefaultTemplate();
         return;
       }
@@ -499,6 +547,13 @@ export default function VoiceToCRM() {
           };
           setBotConfig(config);
           
+          addRealtimeLog({
+            type: 'success',
+            message: 'Bot configuration loaded',
+            timestamp: new Date().toISOString(),
+            details: `Bot: @${config.bot_username}`
+          });
+          
           // Initialize bot
           await telegramService.initializeBot(config);
           
@@ -506,6 +561,12 @@ export default function VoiceToCRM() {
           voiceProcessingWorker.setBotConfig(config);
           // Worker already started in initializeServices
           console.log('Voice processing worker configured');
+          
+          addRealtimeLog({
+            type: 'success',
+            message: 'Voice processing worker configured',
+            timestamp: new Date().toISOString()
+          });
         }
       } catch (botError) {
         console.log('Bot config not found or table does not exist');
@@ -530,8 +591,20 @@ export default function VoiceToCRM() {
             nodes: workflows.nodes || [],
             edges: workflows.edges || [],
           });
+          
+          addRealtimeLog({
+            type: 'success',
+            message: 'Workflow loaded',
+            timestamp: new Date().toISOString(),
+            details: `Workflow: ${workflows.name}`
+          });
         } else {
           // Load default template if no saved workflow
+          addRealtimeLog({
+            type: 'info',
+            message: 'Loading default workflow template',
+            timestamp: new Date().toISOString()
+          });
           loadDefaultTemplate();
         }
       } catch (workflowError) {
@@ -543,6 +616,13 @@ export default function VoiceToCRM() {
       // Load default template on error
       loadDefaultTemplate();
     }
+  };
+
+  const addRealtimeLog = (log: any) => {
+    setRealtimeLogs(prev => [{
+      id: Date.now(),
+      ...log
+    }, ...prev.slice(0, 99)]); // Keep last 100 logs
   };
 
   const loadDefaultTemplate = () => {
@@ -562,12 +642,26 @@ export default function VoiceToCRM() {
 
   const loadRecentCommunications = async () => {
     try {
+      addRealtimeLog({
+        type: 'info',
+        message: 'Loading recent voice notes...',
+        timestamp: new Date().toISOString()
+      });
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
         .from('client_communications')
-        .select('*')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            phone
+          )
+        `)
         .eq('communication_type', 'voice')
         .eq('organization_id', user.id)
         .order('created_at', { ascending: false })
@@ -575,17 +669,107 @@ export default function VoiceToCRM() {
 
       if (!error && data) {
         setRecentCommunications(data);
+        addRealtimeLog({
+          type: 'success',
+          message: `Loaded ${data.length} recent voice notes`,
+          timestamp: new Date().toISOString()
+        });
       } else {
         setRecentCommunications([]);
+        if (error) {
+          addRealtimeLog({
+            type: 'error',
+            message: 'Failed to load voice notes',
+            timestamp: new Date().toISOString(),
+            details: error.message
+          });
+        }
       }
+      
+      // Set up real-time subscription for new communications
+      const channel = supabase
+        .channel('voice-communications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'client_communications',
+            filter: `organization_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            // Fetch the full record with client details
+            const { data: newComm } = await supabase
+              .from('client_communications')
+              .select(`
+                *,
+                clients (
+                  id,
+                  name,
+                  email,
+                  phone
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single();
+            
+            if (newComm && newComm.communication_type === 'voice') {
+              setRecentCommunications(prev => [newComm, ...prev.slice(0, 9)]);
+              setAllVoiceNotes(prev => [newComm, ...prev]);
+              
+              // Add to real-time logs
+              addRealtimeLog({
+                type: 'success',
+                message: `New voice note from ${newComm.clients?.name || 'Unknown'}`,
+                timestamp: new Date().toISOString(),
+                data: newComm
+              });
+              
+              // Update stats
+              loadStatistics();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'client_communications',
+            filter: `organization_id=eq.${user.id}`,
+          },
+          (payload) => {
+            setRecentCommunications(prev => 
+              prev.map(comm => comm.id === payload.new.id ? { ...comm, ...payload.new } : comm)
+            );
+          }
+        )
+        .subscribe();
+      
+      // Cleanup subscription on unmount
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error) {
       console.error('Error loading communications:', error);
       setRecentCommunications([]);
+      addRealtimeLog({
+        type: 'error',
+        message: 'Failed to load recent communications',
+        timestamp: new Date().toISOString(),
+        error
+      });
     }
   };
 
   const loadStatistics = async () => {
     try {
+      addRealtimeLog({
+        type: 'info',
+        message: 'Loading statistics...',
+        timestamp: new Date().toISOString()
+      });
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -625,6 +809,84 @@ export default function VoiceToCRM() {
       console.error('Error loading statistics:', error);
     }
   };
+
+  const loadAllVoiceNotes = async () => {
+    try {
+      addRealtimeLog({
+        type: 'info',
+        message: "Loading today's voice notes...",
+        timestamp: new Date().toISOString()
+      });
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get today's date at midnight
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('client_communications')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            phone
+          )
+        `)
+        .eq('communication_type', 'voice')
+        .eq('organization_id', user.id)
+        .gte('created_at', today.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        setAllVoiceNotes(data);
+        addRealtimeLog({
+          type: 'success',
+          message: `Loaded ${data.length} voice notes from today`,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        setAllVoiceNotes([]);
+        if (error) {
+          addRealtimeLog({
+            type: 'error',
+            message: 'Failed to load voice notes',
+            timestamp: new Date().toISOString(),
+            details: error.message
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading voice notes:', error);
+      setAllVoiceNotes([]);
+      addRealtimeLog({
+        type: 'error',
+        message: 'Failed to load voice notes',
+        timestamp: new Date().toISOString(),
+        details: (error as Error).message
+      });
+    }
+  };
+
+  const filteredVoiceNotes = allVoiceNotes.filter(note => {
+    // Apply text filter only
+    if (voiceNotesFilter) {
+      const searchLower = voiceNotesFilter.toLowerCase();
+      const matchesSearch = 
+        (note.transcription?.toLowerCase().includes(searchLower)) ||
+        (note.notes?.toLowerCase().includes(searchLower)) ||
+        (note.summary?.toLowerCase().includes(searchLower)) ||
+        (note.clients?.name?.toLowerCase().includes(searchLower)) ||
+        (note.client_name?.toLowerCase().includes(searchLower));
+      
+      if (!matchesSearch) return false;
+    }
+    
+    return true;
+  });
 
   const handleBotSetupComplete = async (config: TelegramBotConfig) => {
     setBotConfig(config);
@@ -694,6 +956,13 @@ export default function VoiceToCRM() {
       setIsRecording(true);
       setRecordedTranscription('');
       setTranscriptionMethod('web-speech'); // Use free method by default
+      
+      addRealtimeLog({
+        type: 'info',
+        message: 'Starting microphone recording...',
+        timestamp: new Date().toISOString(),
+        details: 'Using Web Speech API (FREE)'
+      });
 
       await webSpeechTranscription.startRealtimeTranscription(
         (result) => {
@@ -723,10 +992,17 @@ export default function VoiceToCRM() {
     try {
       webSpeechTranscription.stopRealtimeTranscription();
       setIsRecording(false);
+      
+      addRealtimeLog({
+        type: 'info',
+        message: 'Recording stopped',
+        timestamp: new Date().toISOString(),
+        details: `Transcription length: ${recordedTranscription.length} characters`
+      });
 
       if (recordedTranscription.trim()) {
         // Process the transcription
-        await processTranscriptionToCRM(recordedTranscription.trim());
+        await processTranscriptionToCRM(recordedTranscription.trim(), 'microphone');
       } else {
         toast({
           title: "No Speech Detected",
@@ -751,6 +1027,13 @@ export default function VoiceToCRM() {
     try {
       setIsTranscribing(true);
       setRecordedTranscription('');
+      
+      addRealtimeLog({
+        type: 'info',
+        message: `Processing audio file: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        details: `Size: ${(file.size / 1024).toFixed(2)} KB, Type: ${file.type}`
+      });
 
       // Try Web Speech API first (FREE)
       try {
@@ -763,7 +1046,7 @@ export default function VoiceToCRM() {
         });
 
         setRecordedTranscription(result.text);
-        await processTranscriptionToCRM(result.text);
+        await processTranscriptionToCRM(result.text, 'file-upload');
       } catch (webSpeechError) {
         console.error('Web Speech API failed, trying OpenAI:', webSpeechError);
         
@@ -771,7 +1054,7 @@ export default function VoiceToCRM() {
         setTranscriptionMethod('openai');
         const result = await transcriptionService.transcribeAudio(file);
         setRecordedTranscription(result.text);
-        await processTranscriptionToCRM(result.text);
+        await processTranscriptionToCRM(result.text, 'file-upload');
       }
     } catch (error) {
       console.error('Error transcribing file:', error);
@@ -785,15 +1068,28 @@ export default function VoiceToCRM() {
     }
   };
 
-  const processTranscriptionToCRM = async (transcription: string) => {
+  const processTranscriptionToCRM = async (transcription: string, source: string = 'microphone') => {
     try {
       setIsProcessing(true);
+      
+      addRealtimeLog({
+        type: 'info',
+        message: `Processing transcription from ${source}`,
+        timestamp: new Date().toISOString(),
+        details: `Length: ${transcription.length} characters`
+      });
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
       // Process with AI for insights
+      addRealtimeLog({
+        type: 'info',
+        message: 'Processing with AI...',
+        timestamp: new Date().toISOString()
+      });
+      
       const processingResult = await aiProcessingService.processTranscription(
         transcription,
         undefined,
@@ -802,8 +1098,21 @@ export default function VoiceToCRM() {
           generateTitle: true,
         }
       );
+      
+      addRealtimeLog({
+        type: 'success',
+        message: 'AI processing complete',
+        timestamp: new Date().toISOString(),
+        data: { subject: processingResult.subject, sentiment: processingResult.sentiment }
+      });
 
       // Save to database
+      addRealtimeLog({
+        type: 'info',
+        message: 'Saving to CRM database...',
+        timestamp: new Date().toISOString()
+      });
+      
       const { data: communication, error } = await supabase
         .from('client_communications')
         .insert({
@@ -828,6 +1137,13 @@ export default function VoiceToCRM() {
 
       if (error) throw error;
 
+      addRealtimeLog({
+        type: 'success',
+        message: 'Voice note saved to CRM successfully',
+        timestamp: new Date().toISOString(),
+        data: { id: communication?.id, subject: communication?.subject }
+      });
+
       toast({
         title: "Success!",
         description: "Voice note has been saved to CRM",
@@ -840,6 +1156,14 @@ export default function VoiceToCRM() {
       setRecordedTranscription('');
     } catch (error) {
       console.error('Error processing transcription:', error);
+      
+      addRealtimeLog({
+        type: 'error',
+        message: 'Failed to process voice note',
+        timestamp: new Date().toISOString(),
+        details: (error as Error).message || 'Unknown error occurred'
+      });
+      
       toast({
         title: "Processing Error",
         description: (error as Error).message,
@@ -971,200 +1295,267 @@ export default function VoiceToCRM() {
       </div>
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar */}
-        <div className="w-80 border-r bg-muted/10">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="workflow">Workflow</TabsTrigger>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+      <div className="container mx-auto p-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
+            <TabsTrigger value="workflow">Workflow</TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="voice-notes">Voice Notes</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="workflow" className="h-[calc(100%-3rem)] overflow-auto p-4">
-              <NodeLibrary />
-              
-              {selectedNode && (
-                <div className="mt-4">
-                  <NodeEditor
+          {/* Workflow Tab */}
+          <TabsContent value="workflow" className="space-y-4">
+            <div className="flex gap-4">
+              {/* Sidebar for Workflow */}
+              <div className="w-80">
+                {selectedNode ? (
+                  <NodeConfigPanel
                     node={selectedNode}
-                    onUpdate={updateNode}
-                    onDelete={() => {
-                      deleteNode(selectedNode.id);
-                      selectNode(null);
-                    }}
+                    onClose={() => selectNode(null)}
                   />
-                </div>
-              )}
-            </TabsContent>
+                ) : (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Workflow Tools</CardTitle>
+                      <CardDescription>
+                        Drag nodes to the canvas or click a node to configure
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <NodeLibrary />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
-            <TabsContent value="dashboard" className="h-[calc(100%-3rem)] overflow-auto p-4">
-              <div className="space-y-4">
-                {/* Statistics */}
-                <Card>
+              {/* Canvas for Workflow */}
+              <div className="flex-1">
+                <Card className="h-[600px]">
                   <CardHeader>
-                    <CardTitle className="text-sm">Statistics</CardTitle>
+                    <CardTitle>Workflow Canvas</CardTitle>
+                    <CardDescription>
+                      Design your voice processing workflow
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Total Transcriptions</span>
-                      <span className="text-sm font-medium">{stats.totalTranscriptions}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Today</span>
-                      <span className="text-sm font-medium">{stats.todayTranscriptions}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Avg Duration</span>
-                      <span className="text-sm font-medium">{Math.round(stats.averageDuration)}s</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Success Rate</span>
-                      <span className="text-sm font-medium">{stats.successRate.toFixed(1)}%</span>
-                    </div>
+                  <CardContent className="h-[calc(100%-5rem)]">
+                    <WorkflowCanvas onLog={addRealtimeLog} />
                   </CardContent>
                 </Card>
+              </div>
+            </div>
+          </TabsContent>
 
-                {/* Recent Communications */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Recent Voice Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px]">
-                      <div className="space-y-2">
-                        {recentCommunications.map((comm) => (
-                          <div
-                            key={comm.id}
-                            className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50"
-                          >
-                            <Mic className="h-4 w-4 mt-1 text-muted-foreground" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {comm.subject || 'Voice Note'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {comm.clients?.name || 'Unknown'} • {comm.duration_seconds}s
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {comm.processed_content || comm.transcription || 'Processing...'}
-                              </p>
-                            </div>
-                            <Badge 
-                              variant={
-                                comm.status === 'completed' ? 'default' :
-                                comm.status === 'processing' ? 'secondary' :
-                                'outline'
-                              }
-                            >
-                              {comm.status}
-                            </Badge>
-                          </div>
-                        ))}
-                        {recentCommunications.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No voice notes yet
-                          </p>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Statistics Cards */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Transcriptions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalTranscriptions}</div>
+                  <p className="text-xs text-muted-foreground">All time voice notes</p>
+                </CardContent>
+              </Card>
 
-                {/* Quick Actions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Quick Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {/* Microphone Recording */}
-                    <div className="p-3 border rounded-lg space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Direct Recording</span>
-                        <Badge variant={transcriptionMethod === 'web-speech' ? 'default' : 'secondary'}>
-                          {transcriptionMethod === 'web-speech' ? (
-                            <>
-                              <Wifi className="mr-1 h-3 w-3" />
-                              FREE
-                            </>
-                          ) : (
-                            <>
-                              <Key className="mr-1 h-3 w-3" />
-                              OpenAI
-                            </>
-                          )}
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          variant={isRecording ? "destructive" : "default"}
-                          className="flex-1"
-                          onClick={isRecording ? stopMicrophoneRecording : startMicrophoneRecording}
-                          disabled={isProcessing || isTranscribing}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Today's Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.todayTranscriptions}</div>
+                  <p className="text-xs text-muted-foreground">Voice notes today</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Average Duration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{Math.round(stats.averageDuration)}s</div>
+                  <p className="text-xs text-muted-foreground">Per recording</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.successRate.toFixed(1)}%</div>
+                  <p className="text-xs text-muted-foreground">Processing success</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Recent Communications */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Voice Notes</CardTitle>
+                  <CardDescription>Latest voice transcriptions from all channels</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px]">
+                    <div className="space-y-2">
+                      {recentCommunications.map((comm) => (
+                        <div
+                          key={comm.id}
+                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50"
                         >
-                          {isRecording ? (
-                            <>
-                              <MicOff className="mr-2 h-4 w-4" />
-                              Stop Recording
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="mr-2 h-4 w-4" />
-                              Start Recording
-                            </>
-                          )}
-                        </Button>
-                        
-                        <div>
-                          <input
-                            type="file"
-                            accept="audio/*"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            id="audio-upload"
-                            disabled={isProcessing || isTranscribing || isRecording}
-                          />
-                          <label htmlFor="audio-upload">
-                            <Button 
-                              variant="outline" 
-                              asChild
-                              disabled={isProcessing || isTranscribing || isRecording}
-                            >
-                              <span>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload
-                              </span>
-                            </Button>
-                          </label>
+                          <Mic className="h-4 w-4 mt-1 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {comm.subject || 'Voice Note'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {comm.clients?.name || 'Unknown'} • {comm.duration_seconds}s
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {comm.processed_content || comm.transcription || 'Processing...'}
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={
+                              comm.status === 'completed' ? 'default' :
+                              comm.status === 'processing' ? 'secondary' :
+                              'outline'
+                            }
+                          >
+                            {comm.status}
+                          </Badge>
                         </div>
-                      </div>
+                      ))}
+                      {recentCommunications.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No voice notes yet
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
 
-                      {/* Show transcription progress */}
-                      {(isRecording || isTranscribing || recordedTranscription) && (
-                        <div className="mt-2 p-2 bg-muted rounded text-xs">
-                          {isRecording && (
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                              <span>Listening...</span>
-                            </div>
-                          )}
-                          {isTranscribing && (
-                            <div className="flex items-center gap-2">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span>Transcribing...</span>
-                            </div>
-                          )}
-                          {recordedTranscription && !isRecording && !isTranscribing && (
-                            <div className="space-y-1">
-                              <span className="font-medium">Transcription:</span>
-                              <p className="text-muted-foreground">{recordedTranscription}</p>
-                            </div>
-                          )}
+              {/* Quick Actions and Recording */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Voice Recording</CardTitle>
+                  <CardDescription>
+                    Record or upload voice notes to automatically save to CRM
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Recording Controls */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="lg"
+                      variant={isRecording ? "destructive" : "default"}
+                      className="flex-1"
+                      onClick={isRecording ? stopMicrophoneRecording : startMicrophoneRecording}
+                      disabled={isProcessing || isTranscribing}
+                    >
+                      {isRecording ? (
+                        <>
+                          <MicOff className="mr-2 h-4 w-4" />
+                          Stop Recording
+                        </>
+                      ) : (
+                        <>
+                          <Mic className="mr-2 h-4 w-4" />
+                          Start Recording
+                        </>
+                      )}
+                    </Button>
+                    
+                    <div>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="dashboard-audio-upload"
+                        disabled={isProcessing || isTranscribing || isRecording}
+                      />
+                      <label htmlFor="dashboard-audio-upload">
+                        <Button 
+                          size="lg"
+                          variant="outline" 
+                          asChild
+                          disabled={isProcessing || isTranscribing || isRecording}
+                        >
+                          <span>
+                            {isTranscribing ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Transcribing...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload Audio
+                              </>
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Show transcription progress */}
+                  {(isRecording || isTranscribing || recordedTranscription) && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      {isRecording && (
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-sm">Recording in progress...</span>
+                        </div>
+                      )}
+                      {isTranscribing && (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">Transcribing audio...</span>
+                        </div>
+                      )}
+                      {recordedTranscription && !isRecording && !isTranscribing && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">Transcription:</span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setRecordedTranscription('')}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{recordedTranscription}</p>
                         </div>
                       )}
                     </div>
+                  )}
 
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Transcription Method:</span>
+                    <Badge variant={transcriptionMethod === 'web-speech' ? 'default' : 'secondary'}>
+                      {transcriptionMethod === 'web-speech' ? (
+                        <>
+                          <Wifi className="mr-1 h-3 w-3" />
+                          FREE Web Speech API
+                        </>
+                      ) : (
+                        <>
+                          <Key className="mr-1 h-3 w-3" />
+                          OpenAI Whisper
+                        </>
+                      )}
+                    </Badge>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="space-y-2 pt-4 border-t">
                     <Button
                       variant="outline"
                       className="w-full justify-start"
@@ -1186,262 +1577,430 @@ export default function VoiceToCRM() {
                       <RefreshCw className="mr-2 h-4 w-4" />
                       Refresh Data
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => window.open('https://t.me/' + botConfig?.bot_username, '_blank')}
-                      disabled={!botConfig}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open Bot in Telegram
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+                    {botConfig && (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => window.open('https://t.me/' + botConfig?.bot_username, '_blank')}
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open Bot in Telegram
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-            <TabsContent value="settings" className="h-[calc(100%-3rem)] overflow-auto p-4">
-              <div className="space-y-4">
-                {/* Bot Configuration */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Telegram Bot</CardTitle>
-                    <CardDescription>
-                      {botConfig ? `@${botConfig.bot_username}` : 'Not configured'}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {botConfig ? (
+            {/* Real-time Logs Section */}
+            <Card className="mt-4">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Real-time Logs</CardTitle>
+                    <CardDescription>Live system activity and processing logs</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="gap-1">
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                      Live
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setRealtimeLogs([])}
+                    >
+                      Clear Logs
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+                  <div className="space-y-2">
+                    {realtimeLogs.length > 0 ? (
+                      realtimeLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className={`flex items-start gap-2 p-2 rounded-lg text-xs ${
+                            log.type === 'error' ? 'bg-red-50 dark:bg-red-950/20' :
+                            log.type === 'success' ? 'bg-green-50 dark:bg-green-950/20' :
+                            log.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/20' :
+                            'bg-muted/50'
+                          }`}
+                        >
+                          <div className="mt-0.5">
+                            {log.type === 'error' && <AlertCircle className="h-3 w-3 text-red-500" />}
+                            {log.type === 'success' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                            {log.type === 'warning' && <AlertCircle className="h-3 w-3 text-yellow-500" />}
+                            {log.type === 'info' && <Loader2 className="h-3 w-3 text-blue-500" />}
+                          </div>
+                          <div className="flex-1 space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{log.message}</span>
+                              <span className="text-muted-foreground">
+                                {new Date(log.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            {log.details && (
+                              <p className="text-muted-foreground">{log.details}</p>
+                            )}
+                            {log.data && (
+                              <pre className="mt-1 p-1 rounded bg-muted text-xs overflow-x-auto">
+                                {JSON.stringify(log.data, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No logs yet. Activity will appear here in real-time.</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Bot Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Telegram Bot Configuration</CardTitle>
+                  <CardDescription>
+                    {botConfig ? `Connected: @${botConfig.bot_username}` : 'Configure your Telegram bot for voice processing'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {botConfig ? (
+                    <div className="space-y-4">
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Status</span>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Status</span>
                           <Badge variant="outline" className="gap-1">
-                            <div className="h-2 w-2 rounded-full bg-green-500" />
+                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                             Active
                           </Badge>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Username</span>
-                          <span>@{botConfig.bot_username}</span>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Username</span>
+                          <span className="text-sm font-medium">@{botConfig.bot_username}</span>
                         </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Bot ID</span>
+                          <span className="text-sm font-mono">{botConfig.id.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="w-full mt-2"
+                          className="flex-1"
                           onClick={() => setShowBotSetup(true)}
                         >
-                          Reconfigure Bot
+                          <Settings className="mr-2 h-4 w-4" />
+                          Reconfigure
                         </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setShowBotSetup(true)}
-                      >
-                        <Bot className="mr-2 h-4 w-4" />
-                        Setup Telegram Bot
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* API Keys */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">API Keys</CardTitle>
-                    <CardDescription>
-                      Configure API keys for transcription and AI processing
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="openai-key">OpenAI API Key</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="openai-key"
-                          type="password"
-                          placeholder="sk-..."
-                          value={openAIKey}
-                          onChange={(e) => setOpenAIKey(e.target.value)}
-                        />
-                        <Button 
+                        <Button
                           variant="outline"
-                          size="icon"
-                          onClick={handleSaveApiKey}
+                          className="flex-1"
+                          onClick={() => window.open('https://t.me/' + botConfig?.bot_username, '_blank')}
                         >
-                          <Save className="h-4 w-4" />
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open Bot
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Used for Whisper transcription and GPT-4 processing
-                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Workflow Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Workflow Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Auto-save</span>
-                      <Badge>Enabled</Badge>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Workflow ID</span>
-                      <span className="font-mono text-xs">
-                        {savedWorkflowId ? savedWorkflowId.slice(0, 8) + '...' : 'Not saved'}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Canvas */}
-        <div className="flex-1 p-4 space-y-4 overflow-auto">
-          {/* Voice Recording Card */}
-          <Card className="relative">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Voice to CRM</CardTitle>
-                  <CardDescription>
-                    Record or upload voice notes to automatically save to CRM with AI insights
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={transcriptionMethod === 'web-speech' ? 'default' : 'secondary'}>
-                    {transcriptionMethod === 'web-speech' ? (
-                      <>
-                        <Wifi className="mr-1 h-3 w-3" />
-                        FREE Web Speech API
-                      </>
-                    ) : (
-                      <>
-                        <Key className="mr-1 h-3 w-3" />
-                        OpenAI Whisper
-                      </>
-                    )}
-                  </Badge>
-                  {isProcessing && (
-                    <Badge variant="outline">
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      Processing
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-3">
-                <Button
-                  size="lg"
-                  variant={isRecording ? "destructive" : "default"}
-                  onClick={isRecording ? stopMicrophoneRecording : startMicrophoneRecording}
-                  disabled={isProcessing || isTranscribing}
-                  className="flex-1"
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="mr-2 h-5 w-5" />
-                      Stop Recording
-                    </>
                   ) : (
-                    <>
-                      <Mic className="mr-2 h-5 w-5" />
-                      Start Recording
-                    </>
-                  )}
-                </Button>
-                
-                <div>
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="main-audio-upload"
-                    disabled={isProcessing || isTranscribing || isRecording}
-                  />
-                  <label htmlFor="main-audio-upload">
-                    <Button 
-                      size="lg"
-                      variant="outline" 
-                      asChild
-                      disabled={isProcessing || isTranscribing || isRecording}
+                    <Button
+                      className="w-full"
+                      onClick={() => setShowBotSetup(true)}
                     >
-                      <span>
-                        {isTranscribing ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Transcribing...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="mr-2 h-5 w-5" />
-                            Upload Audio
-                          </>
-                        )}
-                      </span>
+                      <Bot className="mr-2 h-4 w-4" />
+                      Setup Telegram Bot
                     </Button>
-                  </label>
-                </div>
-              </div>
-
-              {/* Transcription Display */}
-              {(isRecording || recordedTranscription) && (
-                <div className="mt-4 p-4 bg-muted rounded-lg">
-                  {isRecording && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="h-3 w-3 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-sm font-medium">Recording in progress...</span>
-                    </div>
                   )}
-                  {recordedTranscription && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Transcription:</span>
-                        {!isRecording && !isProcessing && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setRecordedTranscription('')}
-                          >
-                            Clear
-                          </Button>
-                        )}
+                </CardContent>
+              </Card>
+
+              {/* API Keys */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>API Configuration</CardTitle>
+                  <CardDescription>
+                    Configure API keys for enhanced transcription and AI processing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="settings-openai-key">OpenAI API Key</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="settings-openai-key"
+                        type="password"
+                        placeholder="sk-..."
+                        value={openAIKey}
+                        onChange={(e) => setOpenAIKey(e.target.value)}
+                      />
+                      <Button 
+                        size="icon"
+                        onClick={handleSaveApiKey}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Used for Whisper transcription and GPT-4 processing. Leave empty to use FREE Web Speech API.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Workflow Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Workflow Configuration</CardTitle>
+                  <CardDescription>
+                    Manage your voice processing workflow settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Auto-save</span>
+                    <Badge variant="outline">Enabled</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Workflow ID</span>
+                    <span className="text-sm font-mono">
+                      {savedWorkflowId ? savedWorkflowId.slice(0, 12) + '...' : 'Not saved'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Last saved</span>
+                    <span className="text-sm">
+                      {savedWorkflowId ? 'A few moments ago' : 'Never'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleSaveWorkflow}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Workflow
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* How It Works */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>How It Works</CardTitle>
+                  <CardDescription>
+                    Quick guide to using Voice-to-CRM
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Recording Options</AlertTitle>
+                    <AlertDescription>
+                      <ul className="text-sm mt-2 space-y-1">
+                        <li>• <strong>Direct Recording:</strong> Use your microphone (FREE)</li>
+                        <li>• <strong>File Upload:</strong> Upload audio files for transcription</li>
+                        <li>• <strong>Telegram Bot:</strong> Send voice notes to your bot</li>
+                        <li>• All transcriptions are processed with AI and saved to CRM</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Voice Notes Tab */}
+          <TabsContent value="voice-notes" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Today's Voice Notes</CardTitle>
+                    <CardDescription>
+                      Voice conversations recorded today
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search today's notes..."
+                        className="pl-8 w-64"
+                        value={voiceNotesFilter}
+                        onChange={(e) => setVoiceNotesFilter(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => loadAllVoiceNotes()}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-4">
+                    {filteredVoiceNotes.length > 0 ? (
+                      filteredVoiceNotes.map((note: any) => (
+                        <Card key={note.id} className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 rounded-full bg-primary/10">
+                                {note.communication_type === 'voice' ? (
+                                  <Mic className="h-4 w-4 text-primary" />
+                                ) : (
+                                  <MessageCircle className="h-4 w-4 text-primary" />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">
+                                  {note.clients?.name || note.client_name || 'Unknown Client'}
+                                </h4>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{new Date(note.created_at).toLocaleString()}</span>
+                                  {note.duration && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{note.duration}s</span>
+                                    </>
+                                  )}
+                                  {note.source && (
+                                    <>
+                                      <span>•</span>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {note.source}
+                                      </Badge>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {note.sentiment && (
+                                <Badge
+                                  variant={note.sentiment === 'positive' ? 'default' : 
+                                          note.sentiment === 'negative' ? 'destructive' : 'secondary'}
+                                >
+                                  {note.sentiment}
+                                </Badge>
+                              )}
+                              {note.processed && (
+                                <Badge variant="outline" className="text-green-600">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Processed
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Transcription */}
+                          <div className="space-y-3">
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <h5 className="text-sm font-medium mb-1 flex items-center gap-2">
+                                <FileAudio className="h-3 w-3" />
+                                Transcription
+                              </h5>
+                              <p className="text-sm whitespace-pre-wrap">
+                                {note.transcription || note.notes || 'No transcription available'}
+                              </p>
+                            </div>
+                            
+                            {/* AI Summary */}
+                            {note.summary && (
+                              <div className="p-3 rounded-lg bg-primary/5">
+                                <h5 className="text-sm font-medium mb-1 flex items-center gap-2">
+                                  <Brain className="h-3 w-3" />
+                                  AI Summary
+                                </h5>
+                                <p className="text-sm">{note.summary}</p>
+                              </div>
+                            )}
+                            
+                            {/* Key Points */}
+                            {note.key_points && note.key_points.length > 0 && (
+                              <div className="p-3 rounded-lg bg-muted/30">
+                                <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
+                                  <List className="h-3 w-3" />
+                                  Key Points
+                                </h5>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {note.key_points.map((point: string, idx: number) => (
+                                    <li key={idx} className="text-sm">{point}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Action Items */}
+                            {note.action_items && note.action_items.length > 0 && (
+                              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                                <h5 className="text-sm font-medium mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                                  <AlertCircle className="h-3 w-3" />
+                                  Action Items
+                                </h5>
+                                <ul className="space-y-1">
+                                  {note.action_items.map((item: string, idx: number) => (
+                                    <li key={idx} className="flex items-start gap-2 text-sm">
+                                      <CheckCircle className="h-3 w-3 mt-0.5 text-amber-600" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Metadata */}
+                            {note.metadata && (
+                              <div className="pt-3 border-t flex flex-wrap gap-2">
+                                {Object.entries(note.metadata).map(([key, value]: [string, any]) => (
+                                  <Badge key={key} variant="outline" className="text-xs">
+                                    {key}: {String(value)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      ))
+                    ) : (
+                      <div className="text-center py-12">
+                        <FileAudio className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">
+                          {voiceNotesFilter 
+                            ? 'No voice notes match your search' 
+                            : 'No voice notes recorded today'}
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="mt-4"
+                          onClick={() => setActiveTab('dashboard')}
+                        >
+                          Record a Voice Note
+                        </Button>
                       </div>
-                      <p className="text-sm text-muted-foreground">{recordedTranscription}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info */}
-              <Alert className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>How it works</AlertTitle>
-                <AlertDescription>
-                  <ul className="text-sm mt-1 space-y-1">
-                    <li>• <strong>Microphone:</strong> Click "Start Recording" to record directly from your mic (FREE)</li>
-                    <li>• <strong>Upload:</strong> Upload any audio file for transcription</li>
-                    <li>• <strong>Telegram:</strong> Send voice notes to your configured bot</li>
-                    <li>• All transcriptions are automatically processed with AI and saved to CRM</li>
-                  </ul>
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-
-          {/* Workflow Canvas */}
-          <WorkflowCanvas />
-        </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Bot Setup Dialog */}

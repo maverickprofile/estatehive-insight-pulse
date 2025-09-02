@@ -32,6 +32,7 @@ class VoiceProcessingWorkerService {
   private pollingInterval: number | null = null;
   private processingQueue: VoiceProcessingJob[] = [];
   private botConfigs: Map<string, TelegramBotConfig> = new Map();
+  private processingJobs: Set<string> = new Set(); // Track jobs currently being processed
 
   /**
    * Start the worker service
@@ -117,6 +118,11 @@ class VoiceProcessingWorkerService {
 
       // Process jobs sequentially
       for (const job of jobs) {
+        // Skip if already processing this job
+        if (this.processingJobs.has(job.id)) {
+          console.log(`Job ${job.id} is already being processed, skipping`);
+          continue;
+        }
         await this.processJob(job);
       }
     } catch (error) {
@@ -129,6 +135,9 @@ class VoiceProcessingWorkerService {
    */
   private async processJob(job: VoiceProcessingJob): Promise<void> {
     console.log(`Processing job ${job.id} for communication ${job.communication_id}`);
+    
+    // Mark job as being processed
+    this.processingJobs.add(job.id);
 
     try {
       // Update job status to processing
@@ -190,56 +199,47 @@ class VoiceProcessingWorkerService {
         })
         .eq('id', job.communication_id);
 
-      // Step 3: Process with AI for insights
-      console.log('Processing with AI for insights...');
+      // Step 3: Process with AI for insights and decision engine
+      console.log('Processing with AI for insights and decisions...');
       await this.updateJobStatus(job.communication_id, 'summarizing');
 
-      const clientInfo = communication.client_id ? 
-        { id: communication.client_id } : undefined;
+      // Use processCommunication instead to trigger decision engine
+      const processingResult = await aiProcessingService.processCommunication(job.communication_id);
 
-      const processingResult = await aiProcessingService.processTranscription(
-        transcriptionResult.text,
-        clientInfo,
-        {
-          extractEntities: true,
-          generateTitle: true,
-        }
-      );
+      // Step 4: Job status already updated by processCommunication
+      console.log('AI processing and decision generation completed');
 
-      // Step 4: Update communication with AI insights
-      await supabase
-        .from('client_communications')
-        .update({
-          processed_content: processingResult.summary,
-          subject: processingResult.subject,
-          sentiment: processingResult.sentiment,
-          key_points: processingResult.keyPoints,
-          action_items: processingResult.actionItems,
-          entities: processingResult.entities,
-          tags: processingResult.category ? [processingResult.category] : [],
-          status: 'completed',
-        })
-        .eq('id', job.communication_id);
+      // Step 5: Send success notification to Telegram (already includes decisions)
+      // The processCommunication method already sends decision suggestions if there are any
+      // So we only need to send the basic success notification if no decisions were generated
+      const { data: decisions } = await supabase
+        .from('ai_decisions')
+        .select('*')
+        .eq('communication_id', job.communication_id)
+        .eq('status', 'pending');
 
-      // Step 5: Mark job as completed
-      await this.updateJobStatus(job.communication_id, 'completed');
-
-      // Step 6: Send success notification to Telegram (if bot config available)
-      if (botConfig) {
+      if (botConfig && (!decisions || decisions.length === 0)) {
+        // Only send basic notification if no decisions were generated
         await this.sendSuccessNotification(
           botConfig,
           communication,
           transcriptionResult,
           processingResult
         );
-      } else {
-        console.log('Skipping success notification - no bot config available');
+      } else if (decisions && decisions.length > 0) {
+        console.log(`${decisions.length} decision suggestions sent via Telegram`);
       }
 
       console.log(`Successfully processed job ${job.id}`);
+      
+      // Remove from processing set
+      this.processingJobs.delete(job.id);
 
     } catch (error: any) {
       console.error(`Error processing job ${job.id}:`, error);
+      
+      // Remove from processing set even on error
+      this.processingJobs.delete(job.id);
       
       // Update retry count and status
       const newRetryCount = (job.retry_count || 0) + 1;

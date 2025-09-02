@@ -43,6 +43,7 @@ const CalendarLayout = lazy(() => import("./pages/CalendarLayout"));
 const AiToolsLayout = lazy(() => import("./pages/AiToolsLayout"));
 const WhatsAppQAI = lazy(() => import("./pages/ai-tools/WhatsAppQAI"));
 const VoiceToCRM = lazy(() => import("./pages/ai-tools/VoiceToCRM"));
+const VoiceToCRMNew = lazy(() => import("./pages/ai-tools/VoiceToCRMNew"));
 const TestTranscription = lazy(() => import("./pages/ai-tools/TestTranscription"));
 const MessagesLayout = lazy(() => import("./pages/MessagesLayout"));
 const ProfileLayout = lazy(() => import("./pages/ProfileLayout"));
@@ -141,7 +142,7 @@ const App = () => {
                   <Route path="/calendar" element={<CalendarLayout />} />
                   <Route path="/ai-tools" element={<AiToolsLayout />} />
                   <Route path="/ai-tools/whatsapp-qai" element={<WhatsAppQAI />} />
-                  <Route path="/ai-tools/voice-to-crm" element={<VoiceToCRM />} />
+                  <Route path="/ai-tools/voice-to-crm" element={<VoiceToCRMNew />} />
                   <Route path="/ai-tools/test-transcription" element={<TestTranscription />} />
                   <Route path="/messages" element={<MessagesLayout />} />
                   <Route path="/test-whatsapp" element={<TestWhatsApp />} />

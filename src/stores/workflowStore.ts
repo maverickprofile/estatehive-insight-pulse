@@ -99,14 +99,197 @@ const defaultEdgeOptions = {
   },
 };
 
+// Default Voice CRM workflow nodes
+const defaultNodes: WorkflowNode[] = [
+  {
+    id: '1',
+    position: { x: 100, y: 100 },
+    type: 'trigger',
+    data: {
+      label: 'Voice Input',
+      type: 'trigger',
+      subtype: 'voice',
+      config: {
+        source: 'microphone',
+        language: 'en-US',
+      },
+      description: 'Captures voice input from microphone or file upload',
+      icon: 'Mic',
+      color: '#10b981',
+    },
+  },
+  {
+    id: '2',
+    position: { x: 350, y: 100 },
+    type: 'action',
+    data: {
+      label: 'Transcribe Audio',
+      type: 'action',
+      subtype: 'transcription',
+      config: {
+        provider: 'web-speech',
+        model: 'default',
+      },
+      description: 'Converts audio to text using Web Speech API or OpenAI',
+      icon: 'FileAudio',
+      color: '#3b82f6',
+    },
+  },
+  {
+    id: '3',
+    position: { x: 600, y: 100 },
+    type: 'integration',
+    data: {
+      label: 'AI Processing',
+      type: 'integration',
+      subtype: 'openai',
+      config: {
+        model: 'gpt-3.5-turbo',
+        temperature: 0.7,
+      },
+      description: 'Process transcription with AI to extract CRM data',
+      icon: 'Brain',
+      color: '#8b5cf6',
+    },
+  },
+  {
+    id: '4',
+    position: { x: 850, y: 100 },
+    type: 'action',
+    data: {
+      label: 'Save to CRM',
+      type: 'action',
+      subtype: 'database',
+      config: {
+        table: 'communications',
+        action: 'insert',
+      },
+      description: 'Store processed data in CRM database',
+      icon: 'Database',
+      color: '#3b82f6',
+    },
+  },
+  {
+    id: '5',
+    position: { x: 350, y: 250 },
+    type: 'logic',
+    data: {
+      label: 'Check Quality',
+      type: 'logic',
+      subtype: 'condition',
+      config: {
+        condition: 'transcription.confidence > 0.8',
+      },
+      description: 'Validate transcription quality',
+      icon: 'GitBranch',
+      color: '#f59e0b',
+    },
+  },
+  {
+    id: '6',
+    position: { x: 600, y: 350 },
+    type: 'action',
+    data: {
+      label: 'Send Notification',
+      type: 'action',
+      subtype: 'notification',
+      config: {
+        channel: 'email',
+        template: 'new_communication',
+      },
+      description: 'Notify team about new communication',
+      icon: 'Bell',
+      color: '#3b82f6',
+    },
+  },
+];
+
+const defaultEdges: WorkflowEdge[] = [
+  {
+    id: 'e1-2',
+    source: '1',
+    target: '2',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+  },
+  {
+    id: 'e2-3',
+    source: '2',
+    target: '3',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+  },
+  {
+    id: 'e3-4',
+    source: '3',
+    target: '4',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+  },
+  {
+    id: 'e2-5',
+    source: '2',
+    target: '5',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+  },
+  {
+    id: 'e5-6',
+    source: '5',
+    target: '6',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+    data: {
+      label: 'Low confidence',
+    },
+  },
+  {
+    id: 'e4-6',
+    source: '4',
+    target: '6',
+    animated: true,
+    style: { strokeWidth: 2 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      width: 20,
+      height: 20,
+    },
+  },
+];
+
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   // Initial state
   workflowId: null,
-  workflowName: 'Untitled Workflow',
-  workflowDescription: '',
-  toolId: '',
-  nodes: [],
-  edges: [],
+  workflowName: 'Voice to CRM Workflow',
+  workflowDescription: 'Automated voice processing pipeline for CRM',
+  toolId: 'voice-crm',
+  nodes: defaultNodes,
+  edges: defaultEdges,
   selectedNode: null,
   selectedEdge: null,
   isExecuting: false,
@@ -274,10 +457,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   clearWorkflow: () => {
     set({
       workflowId: null,
-      workflowName: 'Untitled Workflow',
-      workflowDescription: '',
-      nodes: [],
-      edges: [],
+      workflowName: 'Voice to CRM Workflow',
+      workflowDescription: 'Automated voice processing pipeline for CRM',
+      nodes: defaultNodes,
+      edges: defaultEdges,
       selectedNode: null,
       selectedEdge: null,
       isExecuting: false,

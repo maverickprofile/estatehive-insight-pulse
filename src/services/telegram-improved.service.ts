@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabaseClient';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  TelegramActionMessage,
+  TelegramInlineButton,
+  TelegramCallbackData,
+  AIDecision,
+} from '@/types/voice-crm.types';
 
 export interface TelegramBotConfig {
   id: string;
@@ -220,8 +226,11 @@ class ImprovedTelegramService {
         }
       } catch (error: any) {
         if (error.message?.includes('Conflict')) {
-          console.log(`Conflict detected for bot ${botId}, stopping polling`);
-          this.stopBot(botId);
+          console.log(`Conflict detected for bot ${botId}, retrying with new session`);
+          // Clear the old update offset and retry instead of stopping
+          this.lastUpdateIds.set(botId, 0);
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           console.error(`Error polling updates for bot ${botId}:`, error);
         }
@@ -362,10 +371,167 @@ Send me a voice message to get started! 🎤
   }
 
   /**
-   * Handle callback query
+   * Handle callback query from inline keyboard buttons
    */
   private async handleCallbackQuery(botId: string, callbackQuery: any): Promise<void> {
     console.log('Callback query received:', callbackQuery);
+    
+    try {
+      // Answer the callback query to remove loading state
+      await this.answerCallbackQuery(botId, callbackQuery.id);
+      
+      // Parse callback data - check for our shortened format first
+      const callbackData = callbackQuery.data;
+      
+      // Check if it's bulk action format (e.g., "bulk:a:all")
+      if (typeof callbackData === 'string' && callbackData.startsWith('bulk:')) {
+        const [, action, target] = callbackData.split(':');
+        
+        if (target === 'all') {
+          // Get all pending decisions from the communication mentioned in the message
+          // We need to extract communication_id from the message context
+          // For now, get recent pending decisions
+          const { data: pendingDecisions } = await supabase
+            .from('ai_decisions')
+            .select('id')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(10);
+          
+          if (pendingDecisions && pendingDecisions.length > 0) {
+            const decisionIds = pendingDecisions.map(d => d.id);
+            
+            if (action === 'a') { // approve all
+              for (const id of decisionIds) {
+                await this.approveDecision(id, callbackQuery.from.id.toString());
+              }
+              await this.editMessage(
+                botId,
+                callbackQuery.message.chat.id,
+                callbackQuery.message.message_id,
+                '✅ All actions approved and queued for execution!'
+              );
+            } else if (action === 'r') { // reject all
+              for (const id of decisionIds) {
+                await supabase
+                  .from('ai_decisions')
+                  .update({
+                    status: 'rejected',
+                    rejected_reason: 'Bulk rejected via Telegram',
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', id);
+              }
+              await this.editMessage(
+                botId,
+                callbackQuery.message.chat.id,
+                callbackQuery.message.message_id,
+                '❌ All actions rejected'
+              );
+            }
+          }
+        }
+      }
+      // Check if it's our shortened format (e.g., "a:0:12345678")
+      else if (typeof callbackData === 'string' && callbackData.match(/^[armv]:\d+:[a-f0-9]{8}$/)) {
+        const [action, index, shortId] = callbackData.split(':');
+        
+        // Find the full decision ID from the current decisions
+        // We need to query the database to get the full ID
+        console.log(`Looking up decision with short ID: ${shortId}`);
+        
+        // Use ilike for case-insensitive matching and proper wildcard
+        const { data: decisions, error: queryError } = await supabase
+          .from('ai_decisions')
+          .select('id')
+          .ilike('id', `${shortId}%`);
+        
+        if (queryError) {
+          console.error('Error querying decision:', queryError);
+          await this.sendMessage(
+            botId,
+            callbackQuery.message.chat.id,
+            '❌ Error finding decision. Please try again.'
+          );
+          return;
+        }
+        
+        console.log(`Query result for short ID ${shortId}:`, decisions);
+        
+        if (!decisions || decisions.length === 0) {
+          console.error(`Decision not found for short ID: ${shortId}`);
+          
+          // Try to see what decisions are actually in the database
+          const { data: recentDecisions } = await supabase
+            .from('ai_decisions')
+            .select('id')
+            .order('created_at', { ascending: false })
+            .limit(5);
+          
+          console.log('Recent decision IDs in database:', recentDecisions?.map(d => d.id));
+          
+          await this.sendMessage(
+            botId,
+            callbackQuery.message.chat.id,
+            '❌ Decision not found. It may have expired.'
+          );
+          return;
+        }
+        
+        const fullDecisionId = decisions[0].id;
+        
+        // Handle the action based on the prefix
+        switch (action) {
+          case 'a': // approve
+            await this.handleDecisionApproval(botId, fullDecisionId, callbackQuery);
+            break;
+          case 'r': // reject
+            await this.handleDecisionRejection(botId, fullDecisionId, callbackQuery);
+            break;
+          case 'm': // modify
+            await this.handleDecisionModification(botId, fullDecisionId, callbackQuery);
+            break;
+          case 'v': // view details
+            await this.showDecisionDetails(botId, fullDecisionId, callbackQuery.message.chat.id);
+            break;
+          default:
+            console.log('Unknown callback action:', action);
+        }
+      } 
+      // Fallback to JSON parsing for bulk actions
+      else {
+        try {
+          const data: TelegramCallbackData = JSON.parse(callbackQuery.data);
+          
+          // Handle the action
+          switch (data.action) {
+            case 'approve':
+              await this.handleDecisionApproval(botId, data.decision_id, callbackQuery);
+              break;
+            case 'reject':
+              await this.handleDecisionRejection(botId, data.decision_id, callbackQuery);
+              break;
+            case 'modify':
+              await this.handleDecisionModification(botId, data.decision_id, callbackQuery);
+              break;
+            case 'view_details':
+              await this.showDecisionDetails(botId, data.decision_id, callbackQuery.message.chat.id);
+              break;
+            default:
+              console.log('Unknown callback action:', data.action);
+          }
+        } catch (parseError) {
+          console.error('Error parsing callback data as JSON:', parseError);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling callback query:', error);
+      await this.sendMessage(
+        botId,
+        callbackQuery.message.chat.id,
+        '❌ Error processing your selection. Please try again.'
+      );
+    }
   }
 
   /**
@@ -619,6 +785,49 @@ Send me a voice message to get started! 🎤
   }
 
   /**
+   * Send message with inline keyboard support
+   */
+  async sendMessageWithKeyboard(
+    botId: string,
+    chatId: string | number,
+    message: string,
+    keyboard: TelegramInlineButton[][],
+    options?: any
+  ): Promise<any> {
+    let config = this.configs.get(botId);
+    
+    // If config not found by ID, try to get any active config
+    if (!config) {
+      console.log(`Bot config not found for ID ${botId}, trying to use default bot token`);
+      const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || '8303023013:AAEE6b_2IOjVs9wfxKrFBxdAc6_JPgvOV8E';
+      
+      const params = {
+        chat_id: chatId,
+        text: message,
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+        ...options,
+      };
+
+      const result = await this.makeApiCall(botToken, 'sendMessage', params);
+      return result.result;
+    }
+
+    const params = {
+      chat_id: chatId,
+      text: message,
+      reply_markup: {
+        inline_keyboard: keyboard,
+      },
+      ...options,
+    };
+
+    const result = await this.makeApiCall(config.bot_token, 'sendMessage', params);
+    return result.result;
+  }
+
+  /**
    * Send message with retry logic
    */
   async sendMessage(botId: string, chatId: string | number, message: string, options?: any): Promise<void> {
@@ -677,6 +886,318 @@ Send me a voice message to get started! 🎤
    */
   setMessageHandler(botId: string, handler: (message: VoiceMessage) => Promise<void>): void {
     this.messageHandlers.set(botId, handler);
+  }
+
+  /**
+   * Send decision suggestions with inline keyboard
+   */
+  async sendDecisionSuggestions(
+    botId: string,
+    chatId: string | number,
+    decisions: AIDecision[],
+    context: string
+  ): Promise<void> {
+    try {
+      console.log(`Sending decision suggestions: botId=${botId}, chatId=${chatId}, decisions=${decisions.length}`);
+    // Build message
+    let message = '📋 **Suggested Actions from Voice Note:**\n\n';
+    message += `_${context}_\n\n`;
+
+    const keyboard: TelegramInlineButton[][] = [];
+
+    decisions.forEach((decision, index) => {
+      // Debug logging for decision IDs
+      console.log(`Decision ${index}: ID = ${decision.id}, Short ID = ${decision.id.substring(0, 8)}`);
+      
+      const emoji = this.getDecisionEmoji(decision.decision_type);
+      message += `${index + 1}. ${emoji} **${this.getDecisionTitle(decision)}**\n`;
+      message += `   📊 Confidence: ${Math.round(decision.confidence_score * 100)}%\n`;
+      
+      // Add decision details
+      if (decision.decision_type === 'schedule_appointment' && decision.parameters.start_time) {
+        const date = new Date(decision.parameters.start_time);
+        message += `   📅 ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}\n`;
+      } else if (decision.decision_type === 'create_task') {
+        message += `   ⚡ Priority: ${decision.parameters.priority || 'normal'}\n`;
+      } else if (decision.decision_type === 'update_budget') {
+        message += `   💰 ${decision.parameters.budget_min}-${decision.parameters.budget_max}\n`;
+      }
+      
+      message += '\n';
+
+      // Create buttons for this decision with shortened callback data
+      // Use index instead of full UUID to stay within Telegram's 64-byte limit
+      const row: TelegramInlineButton[] = [
+        {
+          text: `✅ Approve #${index + 1}`,
+          callback_data: `a:${index}:${decision.id.substring(0, 8)}`, // Shortened format
+        },
+        {
+          text: `❌ Reject #${index + 1}`,
+          callback_data: `r:${index}:${decision.id.substring(0, 8)}`,
+        },
+      ];
+
+      // Add modify button for certain decision types
+      if (['schedule_appointment', 'create_task'].includes(decision.decision_type)) {
+        row.push({
+          text: `✏️ Edit #${index + 1}`,
+          callback_data: `m:${index}:${decision.id.substring(0, 8)}`,
+        });
+      }
+
+      keyboard.push(row);
+    });
+
+    // Add bulk action buttons with shortened format
+    if (decisions.length > 1) {
+      keyboard.push([
+        {
+          text: '✅ Approve All',
+          callback_data: 'bulk:a:all', // Shortened bulk approve format
+        },
+        {
+          text: '❌ Reject All',
+          callback_data: 'bulk:r:all', // Shortened bulk reject format
+        },
+      ]);
+    }
+
+    // Send message with keyboard
+    await this.sendMessageWithKeyboard(
+      botId,
+      chatId,
+      message,
+      keyboard,
+      { parse_mode: 'Markdown' }
+    );
+    
+    console.log('Decision suggestions sent successfully with inline keyboard');
+    } catch (error) {
+      console.error('Error sending decision suggestions:', error);
+      // Fallback to sending without buttons
+      await this.sendMessage(botId, chatId, `📋 Suggested Actions:\n\n${context}`);
+    }
+  }
+
+  /**
+   * Handle decision approval
+   */
+  private async handleDecisionApproval(
+    botId: string,
+    decisionId: string,
+    callbackQuery: any
+  ): Promise<void> {
+    try {
+      const chatId = callbackQuery.message.chat.id;
+      const userId = callbackQuery.from.id;
+      const messageId = callbackQuery.message.message_id;
+
+      // Handle bulk approval
+      if (decisionId === 'all') {
+        const decisionIds = callbackQuery.data.additional_data || [];
+        for (const id of decisionIds) {
+          await this.approveDecision(id, userId.toString());
+        }
+        
+        // Update message
+        await this.editMessage(
+          botId,
+          chatId,
+          messageId,
+          '✅ All actions approved and queued for execution!'
+        );
+      } else {
+        // Single approval
+        await this.approveDecision(decisionId, userId.toString());
+        
+        // Update message
+        const updatedText = callbackQuery.message.text + '\n\n✅ Action approved and executing...';
+        await this.editMessage(botId, chatId, messageId, updatedText);
+      }
+    } catch (error) {
+      console.error('Error handling approval:', error);
+    }
+  }
+
+  /**
+   * Handle decision rejection
+   */
+  private async handleDecisionRejection(
+    botId: string,
+    decisionId: string,
+    callbackQuery: any
+  ): Promise<void> {
+    try {
+      const chatId = callbackQuery.message.chat.id;
+      const messageId = callbackQuery.message.message_id;
+
+      // Update decision status
+      await supabase
+        .from('ai_decisions')
+        .update({
+          status: 'rejected',
+          rejected_reason: 'User rejected via Telegram',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', decisionId);
+
+      // Update message
+      const updatedText = callbackQuery.message.text + '\n\n❌ Action rejected';
+      await this.editMessage(botId, chatId, messageId, updatedText);
+    } catch (error) {
+      console.error('Error handling rejection:', error);
+    }
+  }
+
+  /**
+   * Handle decision modification
+   */
+  private async handleDecisionModification(
+    botId: string,
+    decisionId: string,
+    callbackQuery: any
+  ): Promise<void> {
+    const chatId = callbackQuery.message.chat.id;
+    
+    await this.sendMessage(
+      botId,
+      chatId,
+      '✏️ To modify this action, please send a message with the changes you want.\n' +
+      'Example: "Change appointment time to 3 PM tomorrow"',
+      { reply_to_message_id: callbackQuery.message.message_id }
+    );
+  }
+
+  /**
+   * Show decision details
+   */
+  private async showDecisionDetails(
+    botId: string,
+    decisionId: string,
+    chatId: string | number
+  ): Promise<void> {
+    const { data: decision } = await supabase
+      .from('ai_decisions')
+      .select('*')
+      .eq('id', decisionId)
+      .single();
+
+    if (decision) {
+      const details = `📋 **Decision Details**\n\n` +
+        `Type: ${decision.decision_type}\n` +
+        `Confidence: ${Math.round(decision.confidence_score * 100)}%\n` +
+        `Priority: ${decision.priority}\n` +
+        `Status: ${decision.status}\n\n` +
+        `Parameters:\n${JSON.stringify(decision.parameters, null, 2)}`;
+
+      await this.sendMessage(botId, chatId, details, { parse_mode: 'Markdown' });
+    }
+  }
+
+  /**
+   * Answer callback query
+   */
+  private async answerCallbackQuery(botId: string, callbackQueryId: string): Promise<void> {
+    const config = this.configs.get(botId);
+    if (!config) return;
+
+    await this.makeApiCall(config.bot_token, 'answerCallbackQuery', {
+      callback_query_id: callbackQueryId,
+    });
+  }
+
+  /**
+   * Edit message text
+   */
+  private async editMessage(
+    botId: string,
+    chatId: string | number,
+    messageId: number,
+    text: string
+  ): Promise<void> {
+    const config = this.configs.get(botId);
+    if (!config) return;
+
+    await this.makeApiCall(config.bot_token, 'editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text: text,
+    });
+  }
+
+  /**
+   * Approve a decision
+   */
+  private async approveDecision(decisionId: string, userId: string): Promise<void> {
+    // Update decision status to approved
+    await supabase
+      .from('ai_decisions')
+      .update({
+        status: 'approved',
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+      })
+      .eq('id', decisionId);
+    
+    // Execute the approved decision
+    try {
+      const { crmActionsService } = await import('./crm-actions.service');
+      await crmActionsService.initialize();
+      
+      // Get the full decision details
+      const { data: decision } = await supabase
+        .from('ai_decisions')
+        .select('*')
+        .eq('id', decisionId)
+        .single();
+      
+      if (decision) {
+        // Execute the decision
+        const result = await crmActionsService.executeDecision(decision);
+        console.log(`Decision ${decisionId} execution result:`, result);
+      }
+    } catch (error) {
+      console.error('Error executing approved decision:', error);
+    }
+  }
+
+  /**
+   * Get emoji for decision type
+   */
+  private getDecisionEmoji(decisionType: string): string {
+    const emojis: Record<string, string> = {
+      'create_lead': '👤',
+      'update_client': '✏️',
+      'schedule_appointment': '📅',
+      'create_task': '📝',
+      'update_property': '🏠',
+      'send_message': '💬',
+      'change_status': '🔄',
+      'assign_agent': '👥',
+      'update_budget': '💰',
+      'add_note': '📋',
+    };
+    return emojis[decisionType] || '📌';
+  }
+
+  /**
+   * Get title for decision
+   */
+  private getDecisionTitle(decision: AIDecision): string {
+    const titles: Record<string, string> = {
+      'create_lead': 'Create New Lead',
+      'update_client': 'Update Client Info',
+      'schedule_appointment': decision.parameters.title || 'Schedule Appointment',
+      'create_task': decision.parameters.title || 'Create Task',
+      'update_property': 'Update Property',
+      'send_message': 'Send Message',
+      'change_status': 'Change Status',
+      'assign_agent': 'Assign Agent',
+      'update_budget': 'Update Budget',
+      'add_note': 'Add Note',
+    };
+    return titles[decision.decision_type] || decision.decision_type;
   }
 
   /**

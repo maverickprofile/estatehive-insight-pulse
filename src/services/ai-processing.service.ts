@@ -2,6 +2,9 @@ import OpenAI from 'openai';
 import { supabase } from '@/lib/supabaseClient';
 import { improvedTelegramService as telegramService } from './telegram-improved.service';
 import { configService } from './config.service';
+import { aiDecisionService } from './ai-decision.service';
+import { crmActionsService } from './crm-actions.service';
+import { VoiceProcessingContext } from '@/types/voice-crm.types';
 
 export interface ProcessingResult {
   summary: string;
@@ -159,7 +162,7 @@ Be concise and professional in your summaries.`;
   }
 
   /**
-   * Process a communication record
+   * Process a communication record with decision engine integration
    */
   async processCommunication(communicationId: string): Promise<ProcessingResult> {
     try {
@@ -214,6 +217,77 @@ Be concise and professional in your summaries.`;
 
       if (updateError) {
         throw updateError;
+      }
+
+      // Create voice processing context for decision engine
+      const context: VoiceProcessingContext = {
+        communication_id: communicationId,
+        transcription: communication.transcription || communication.raw_content || '',
+        ai_summary: result.summary,
+        key_points: result.keyPoints,
+        action_items: result.actionItems,
+        entities: result.entities,
+        sentiment: result.sentiment,
+        urgency: result.urgency || 'medium',
+        client_info: communication.clients ? {
+          id: communication.clients.id,
+          name: communication.clients.name,
+          type: communication.clients.client_type,
+        } : undefined,
+      };
+
+      // Analyze conversation for decisions
+      console.log('Analyzing conversation for AI decisions...');
+      await aiDecisionService.initialize(communication.organization_id);
+      const suggestions = await aiDecisionService.analyzeConversation(context);
+      console.log(`Generated ${suggestions.length} decision suggestions`);
+      
+      // Create decisions in database
+      const decisions = await aiDecisionService.createDecisions(
+        suggestions,
+        communicationId,
+        communication.organization_id
+      );
+
+      // Send decision suggestions via Telegram if bot is configured
+      if (communication.channel_id && decisions.length > 0) {
+        // Get bot config from metadata or use default
+        let botId = communication.channel_metadata?.bot_id;
+        
+        // If no bot ID in metadata, try to get from telegram configs
+        if (!botId) {
+          const { data: botConfigs } = await supabase
+            .from('telegram_bot_configs')
+            .select('id')
+            .eq('organization_id', communication.organization_id)
+            .eq('is_active', true)
+            .limit(1)
+            .single();
+          
+          botId = botConfigs?.id;
+        }
+        
+        if (botId) {
+          console.log(`Sending ${decisions.length} decision suggestions to Telegram chat ${communication.channel_id}`);
+          await telegramService.sendDecisionSuggestions(
+            botId,
+            communication.channel_id,
+            decisions,
+            result.summary
+          );
+        } else {
+          console.log('No bot ID found, skipping Telegram decision suggestions');
+        }
+      }
+
+      // Initialize CRM actions service for auto-approved decisions
+      await crmActionsService.initialize();
+      
+      // Execute auto-approved decisions
+      for (const decision of decisions) {
+        if (decision.status === 'approved') {
+          await crmActionsService.executeDecision(decision);
+        }
       }
 
       // Update job status to completed
@@ -338,20 +412,41 @@ Be concise and professional in your summaries.`;
   }
 
   /**
-   * Send completion notification via Telegram
+   * Send completion notification with decision suggestions via Telegram
    */
   async sendCompletionNotification(
     botId: string,
     chatId: string,
     result: ProcessingResult,
-    clientName?: string
+    clientName?: string,
+    communicationId?: string
   ): Promise<void> {
     try {
+      // Send initial summary message
       const message = this.formatNotificationMessage(result, clientName);
       
       await telegramService.sendMessage(botId, chatId, message, {
         parse_mode: 'Markdown',
       });
+
+      // If communication ID is provided, check for decisions
+      if (communicationId) {
+        const { data: decisions } = await supabase
+          .from('ai_decisions')
+          .select('*')
+          .eq('communication_id', communicationId)
+          .eq('status', 'pending');
+
+        if (decisions && decisions.length > 0) {
+          // Send decision suggestions with buttons
+          await telegramService.sendDecisionSuggestions(
+            botId,
+            chatId,
+            decisions,
+            result.summary
+          );
+        }
+      }
     } catch (error) {
       console.error('Error sending completion notification:', error);
     }

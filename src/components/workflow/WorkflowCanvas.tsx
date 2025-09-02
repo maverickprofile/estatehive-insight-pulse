@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -10,6 +10,8 @@ import {
   useReactFlow,
   NodeTypes,
   EdgeTypes,
+  ReactFlowInstance,
+  useKeyPress,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useWorkflowStore } from '@/stores/workflowStore';
@@ -40,10 +42,15 @@ const nodeTypes: NodeTypes = {
 
 const edgeTypes: EdgeTypes = {};
 
-function WorkflowCanvasContent() {
+interface WorkflowCanvasContentProps {
+  onLog?: (log: any) => void;
+}
+
+function WorkflowCanvasContent({ onLog }: WorkflowCanvasContentProps) {
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { project } = useReactFlow();
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   
   const {
     nodes,
@@ -58,7 +65,40 @@ function WorkflowCanvasContent() {
     validateWorkflow,
     startExecution,
     stopExecution,
+    deleteNode,
+    selectNode,
   } = useWorkflowStore();
+
+  // Handle delete key press
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedNodes.length > 0) {
+        selectedNodes.forEach(nodeId => deleteNode(nodeId));
+        setSelectedNodes([]);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodes, deleteNode]);
+
+  // Handle node selection
+  const onSelectionChange = useCallback((params: any) => {
+    const selectedNodeIds = params.nodes.map((node: any) => node.id);
+    setSelectedNodes(selectedNodeIds);
+    
+    // Update the store with the selected node
+    if (params.nodes.length === 1) {
+      selectNode(params.nodes[0]);
+    } else {
+      selectNode(null);
+    }
+  }, [selectNode]);
+  
+  // Handle node click
+  const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    selectNode(node);
+  }, [selectNode]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -69,6 +109,10 @@ function WorkflowCanvasContent() {
     (event: React.DragEvent) => {
       event.preventDefault();
 
+      if (!reactFlowInstance) {
+        return;
+      }
+
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       const nodeData = event.dataTransfer.getData('application/reactflow');
 
@@ -77,9 +121,11 @@ function WorkflowCanvasContent() {
       }
 
       const parsedData = JSON.parse(nodeData);
-      const position = project({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+      
+      // Use screenToFlowPosition for newer versions of ReactFlow
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
       });
 
       useWorkflowStore.getState().addNode({
@@ -87,8 +133,15 @@ function WorkflowCanvasContent() {
         type: parsedData.nodeType,
         data: parsedData,
       });
+      
+      onLog?.({
+        type: 'info',
+        message: `Added ${parsedData.label} node`,
+        timestamp: new Date().toISOString(),
+        details: `Type: ${parsedData.nodeType}`
+      });
     },
-    [project]
+    [reactFlowInstance, onLog]
   );
 
   const handleSave = async () => {
@@ -99,6 +152,12 @@ function WorkflowCanvasContent() {
         description: validation.errors.join(', '),
         variant: 'destructive',
       });
+      onLog?.({
+        type: 'error',
+        message: 'Workflow validation failed',
+        timestamp: new Date().toISOString(),
+        details: validation.errors.join(', ')
+      });
       return;
     }
 
@@ -108,11 +167,22 @@ function WorkflowCanvasContent() {
         title: 'Success',
         description: 'Workflow saved successfully',
       });
+      onLog?.({
+        type: 'success',
+        message: 'Workflow saved successfully',
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
       toast({
         title: 'Error',
         description: 'Failed to save workflow',
         variant: 'destructive',
+      });
+      onLog?.({
+        type: 'error',
+        message: 'Failed to save workflow',
+        timestamp: new Date().toISOString(),
+        details: (error as Error).message
       });
     }
   };
@@ -124,6 +194,11 @@ function WorkflowCanvasContent() {
         title: 'Execution Stopped',
         description: 'Workflow execution has been stopped',
       });
+      onLog?.({
+        type: 'warning',
+        message: 'Workflow execution stopped',
+        timestamp: new Date().toISOString()
+      });
     } else {
       const validation = validateWorkflow();
       if (!validation.isValid) {
@@ -132,8 +207,21 @@ function WorkflowCanvasContent() {
           description: validation.errors.join(', '),
           variant: 'destructive',
         });
+        onLog?.({
+          type: 'error',
+          message: 'Workflow validation failed',
+          timestamp: new Date().toISOString(),
+          details: validation.errors.join(', ')
+        });
         return;
       }
+      
+      onLog?.({
+        type: 'info',
+        message: 'Starting workflow execution',
+        timestamp: new Date().toISOString(),
+        details: `Executing ${nodes.length} nodes`
+      });
       
       startExecution();
       toast({
@@ -144,7 +232,7 @@ function WorkflowCanvasContent() {
   };
 
   return (
-    <div className="w-full h-full" ref={reactFlowWrapper}>
+    <div className="w-full h-full min-h-[500px]" style={{ width: '100%', height: '500px' }} ref={reactFlowWrapper}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -153,8 +241,12 @@ function WorkflowCanvasContent() {
         onConnect={onConnect}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onInit={setReactFlowInstance}
+        onSelectionChange={onSelectionChange}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        deleteKeyCode={['Delete', 'Backspace']}
         fitView
         proOptions={{ hideAttribution: true }}
       >
@@ -228,10 +320,16 @@ function WorkflowCanvasContent() {
   );
 }
 
-export default function WorkflowCanvas() {
+interface WorkflowCanvasProps {
+  onLog?: (log: any) => void;
+}
+
+export default function WorkflowCanvas({ onLog }: WorkflowCanvasProps) {
   return (
-    <ReactFlowProvider>
-      <WorkflowCanvasContent />
-    </ReactFlowProvider>
+    <div style={{ width: '100%', height: '100%', minHeight: '500px' }}>
+      <ReactFlowProvider>
+        <WorkflowCanvasContent onLog={onLog} />
+      </ReactFlowProvider>
+    </div>
   );
 }
