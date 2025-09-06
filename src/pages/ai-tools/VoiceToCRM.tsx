@@ -71,14 +71,19 @@ import NodeConfigPanel from '@/components/workflow/NodeConfigPanel';
 import { useWorkflowStore } from '@/stores/workflowStore';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { improvedTelegramService as telegramService, TelegramBotConfig } from '@/services/telegram-improved.service';
+import { improvedTelegramService, TelegramBotConfig } from '@/services/telegram-improved.service';
 import { transcriptionService } from '@/services/transcription.service';
 import { improvedWebSpeech as webSpeechTranscription } from '@/services/web-speech-improved.service';
 import { aiProcessingService } from '@/services/ai-processing.service';
 import { voiceProcessingWorker } from '@/services/voice-processing-worker.service';
 import { configService } from '@/services/config.service';
 import { voiceToCRMTemplate } from '@/templates/voice-to-crm.template';
+import { aiDecisionService } from '@/services/ai-decision.service';
+import { crmActionsService } from '@/services/crm-actions.service';
+import { telegramApprovalIntegration } from '@/services/telegram-approval-integration.service';
 import { v4 as uuidv4 } from 'uuid';
+import { ApprovalDialog } from '@/components/approval/ApprovalDialog';
+import { ActionPreview } from '@/components/approval/ActionPreview';
 
 // Default credentials (can be overridden by user)
 const DEFAULT_CREDENTIALS = {
@@ -123,7 +128,7 @@ function TelegramBotSetup({
         settings: {},
       };
 
-      await telegramService.initializeBot(testConfig);
+      await improvedTelegramService.initializeBot(testConfig);
       
       // Get bot info from Telegram API
       const response = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
@@ -415,6 +420,10 @@ export default function VoiceToCRM() {
   const [savedWorkflowId, setSavedWorkflowId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedTranscription, setRecordedTranscription] = useState('');
+  const [pendingDecisions, setPendingDecisions] = useState<any[]>([]);
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
+  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [transcriptionMethod, setTranscriptionMethod] = useState<'web-speech' | 'openai'>('web-speech');
   const [isTranscribing, setIsTranscribing] = useState(false);
 
@@ -449,8 +458,10 @@ export default function VoiceToCRM() {
     // Cleanup on unmount
     return () => {
       voiceProcessingWorker.stop();
+      // Stop all bots using improved telegram service only
+      improvedTelegramService.stopAllBots();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initializeServices = async () => {
     try {
@@ -460,9 +471,13 @@ export default function VoiceToCRM() {
         timestamp: new Date().toISOString()
       });
       
-      // Get current user for organization context
-      const { data: { user } } = await supabase.auth.getUser();
-      const organizationId = user?.id;
+      // Get or create consistent organization ID
+      const organizationId = localStorage.getItem('organizationId') || (() => {
+        const newId = uuidv4();
+        localStorage.setItem('organizationId', newId);
+        return newId;
+      })();
+      setCurrentUserId(organizationId);
 
       // Initialize configuration service first
       await configService.initialize(organizationId);
@@ -473,8 +488,20 @@ export default function VoiceToCRM() {
       // Initialize AI processing service (will get key from config service)
       await aiProcessingService.initialize();
       
+      // Initialize AI decision service
+      await aiDecisionService.initialize(organizationId);
+      
+      // Initialize CRM actions service with user
+      await crmActionsService.initialize(organizationId);
+      
+      // Initialize Telegram-Approval integration
+      await telegramApprovalIntegration.initialize(organizationId);
+      
       // Start voice processing worker with organization ID
       await voiceProcessingWorker.start(botConfig ? [botConfig] : [], organizationId);
+      
+      // Load pending approval requests
+      await loadPendingApprovals();
       
       addRealtimeLog({
         type: 'success',
@@ -554,8 +581,8 @@ export default function VoiceToCRM() {
             details: `Bot: @${config.bot_username}`
           });
           
-          // Initialize bot
-          await telegramService.initializeBot(config);
+          // Initialize bot with improved service (avoid duplicate)
+          await improvedTelegramService.initializeBot(config);
           
           // Start voice processing worker with bot config
           voiceProcessingWorker.setBotConfig(config);
@@ -620,7 +647,7 @@ export default function VoiceToCRM() {
 
   const addRealtimeLog = (log: any) => {
     setRealtimeLogs(prev => [{
-      id: Date.now(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       ...log
     }, ...prev.slice(0, 99)]); // Keep last 100 logs
   };
@@ -953,25 +980,36 @@ export default function VoiceToCRM() {
   // Microphone recording functions
   const startMicrophoneRecording = async () => {
     try {
-      setIsRecording(true);
-      setRecordedTranscription('');
-      setTranscriptionMethod('web-speech'); // Use free method by default
-      
       addRealtimeLog({
         type: 'info',
-        message: 'Starting microphone recording...',
+        message: 'Microphone recording temporarily disabled',
         timestamp: new Date().toISOString(),
-        details: 'Using Web Speech API (FREE)'
+        details: 'Please use Telegram voice notes instead'
       });
 
-      await webSpeechTranscription.startRealtimeTranscription(
-        (result) => {
-          if (result.isFinal) {
-            setRecordedTranscription(prev => prev + result.text + ' ');
-          }
-        },
-        { language: 'en' }
-      );
+      toast({
+        title: "Use Telegram Voice Notes",
+        description: "Please send a voice message to your Telegram bot instead. The microphone feature is being updated.",
+        action: (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowBotSetup(true)}
+          >
+            Setup Bot
+          </Button>
+        ),
+      });
+      return;
+      
+      // Temporarily disabled - will be fixed
+      /*
+      setIsRecording(true);
+      setRecordedTranscription('');
+      setTranscriptionMethod('web-speech');
+      
+      // Need to implement proper microphone recording
+      */
 
       toast({
         title: "Recording Started",
@@ -1144,9 +1182,75 @@ export default function VoiceToCRM() {
         data: { id: communication?.id, subject: communication?.subject }
       });
 
+      // Analyze for AI decisions
+      addRealtimeLog({
+        type: 'info',
+        message: 'Analyzing for CRM actions...',
+        timestamp: new Date().toISOString()
+      });
+
+      const context = {
+        transcription: transcription,
+        ai_summary: processingResult.summary,
+        key_points: processingResult.keyPoints,
+        action_items: processingResult.actionItems,
+        entities: processingResult.entities,
+        sentiment: processingResult.sentiment,
+        communication_id: communication.id,
+      };
+
+      const suggestions = await aiDecisionService.analyzeConversation(context);
+      
+      if (suggestions.length > 0) {
+        addRealtimeLog({
+          type: 'info',
+          message: `Found ${suggestions.length} potential CRM actions`,
+          timestamp: new Date().toISOString()
+        });
+
+        // Process decisions with approval workflow
+        const result = await aiDecisionService.processDecisionsWithApproval(
+          suggestions,
+          communication.id,
+          user.id
+        );
+
+        if (result.approvalRequests.length > 0) {
+          addRealtimeLog({
+            type: 'warning',
+            message: `${result.approvalRequests.length} action(s) require approval`,
+            timestamp: new Date().toISOString()
+          });
+          
+          toast({
+            title: "Approval Required",
+            description: `${result.approvalRequests.length} CRM action(s) require your approval`,
+            action: (
+              <Button
+                size="sm"
+                onClick={() => navigate('/approval-queue')}
+              >
+                View
+              </Button>
+            ),
+          });
+          
+          // Refresh pending approvals
+          await loadPendingApprovals();
+        }
+
+        if (result.autoApproved.length > 0) {
+          addRealtimeLog({
+            type: 'success',
+            message: `${result.autoApproved.length} action(s) auto-approved and executed`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
       toast({
         title: "Success!",
-        description: "Voice note has been saved to CRM",
+        description: "Voice note processed and CRM actions identified",
       });
 
       // Refresh recent communications
@@ -1187,7 +1291,7 @@ export default function VoiceToCRM() {
     setIsProcessing(true);
     try {
       // Send test message to bot
-      await telegramService.sendMessage(
+      await improvedTelegramService.sendMessage(
         botConfig.id,
         botConfig.settings.testChatId || '@' + botConfig.bot_username,
         '🧪 Test workflow initiated. Please send a voice message to test the transcription.'
@@ -1205,6 +1309,89 @@ export default function VoiceToCRM() {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const loadPendingApprovals = async () => {
+    try {
+      if (!currentUserId) return;
+      
+      // Load approval requests directly
+      const { data, error } = await supabase
+        .from('approval_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        // Set the approval requests directly
+        setPendingDecisions(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading pending approvals:', error);
+    }
+  };
+
+  const handleApproveDecision = async (approvalId: string) => {
+    try {
+      // Quick approve without opening dialog
+      if (currentUserId) {
+        // Use the approval service to process the approval
+        const { approvalService } = await import('@/services/approval.service');
+        await approvalService.processApprovalAction(
+          {
+            request_id: approvalId,
+            action: 'approve',
+          },
+          currentUserId
+        );
+        
+        toast({
+          title: "Action Approved",
+          description: "The CRM action has been approved and will be executed",
+        });
+        
+        await loadPendingApprovals();
+      }
+    } catch (error) {
+      console.error('Error approving action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve the action",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectDecision = async (approvalId: string) => {
+    try {
+      if (currentUserId) {
+        // Use the approval service to process the rejection
+        const { approvalService } = await import('@/services/approval.service');
+        await approvalService.processApprovalAction(
+          {
+            request_id: approvalId,
+            action: 'reject',
+            reason: 'Rejected via quick action',
+          },
+          currentUserId
+        );
+        
+        toast({
+          title: "Action Rejected",
+          description: "The CRM action has been rejected",
+        });
+        
+        await loadPendingApprovals();
+      }
+    } catch (error) {
+      console.error('Error rejecting action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject the action",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1297,10 +1484,18 @@ export default function VoiceToCRM() {
       {/* Main Content */}
       <div className="container mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-5 mb-4">
             <TabsTrigger value="workflow">Workflow</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="voice-notes">Voice Notes</TabsTrigger>
+            <TabsTrigger value="approvals" className="relative">
+              Approvals
+              {pendingDecisions.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                  {pendingDecisions.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -1479,28 +1674,24 @@ export default function VoiceToCRM() {
                         id="dashboard-audio-upload"
                         disabled={isProcessing || isTranscribing || isRecording}
                       />
-                      <label htmlFor="dashboard-audio-upload">
-                        <Button 
-                          size="lg"
-                          variant="outline" 
-                          asChild
-                          disabled={isProcessing || isTranscribing || isRecording}
-                        >
-                          <span>
-                            {isTranscribing ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Transcribing...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Audio
-                              </>
-                            )}
-                          </span>
-                        </Button>
-                      </label>
+                      <Button 
+                        size="lg"
+                        variant="outline"
+                        disabled={isProcessing || isTranscribing || isRecording}
+                        onClick={() => document.getElementById('dashboard-audio-upload')?.click()}
+                      >
+                        {isTranscribing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Transcribing...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Audio
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
 
@@ -2000,6 +2191,167 @@ export default function VoiceToCRM() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Approvals Tab */}
+          <TabsContent value="approvals" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Pending CRM Actions</CardTitle>
+                    <CardDescription>
+                      Review and approve AI-suggested CRM actions from voice notes
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadPendingApprovals}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/approval-queue')}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      View All
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {pendingDecisions.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingDecisions.map((approval: any) => (
+                      <Card key={approval.id} className="border-l-4 border-l-yellow-500">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Shield className="w-4 h-4 text-yellow-500" />
+                              <CardTitle className="text-sm">
+                                {approval.entity_type} - {approval.action_type}
+                              </CardTitle>
+                            </div>
+                            <Badge variant={approval.is_urgent ? "destructive" : "default"}>
+                              {approval.priority || 'medium'}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-xs mt-1">
+                            {approval.change_summary || 'Approval required for CRM action'}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pb-3">
+                          <div className="space-y-2">
+                            {approval.request_reason && (
+                              <Alert className="py-2">
+                                <AlertCircle className="h-3 w-3" />
+                                <AlertDescription className="text-xs">
+                                  {approval.request_reason}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Requested: {new Date(approval.requested_at).toLocaleString()}
+                              </span>
+                              <span className="text-muted-foreground">
+                                Expires: {new Date(approval.expires_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 pt-2">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedApprovalId(approval.id);
+                                  setShowApprovalDialog(true);
+                                }}
+                              >
+                                View Details
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleApproveDecision(approval.id)}
+                              >
+                                Quick Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRejectDecision(approval.id)}
+                              >
+                                Reject
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">
+                      No pending approvals
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      AI-suggested actions will appear here for your review
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Approval Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Auto-Approved Today</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats.todayTranscriptions || 0}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    High confidence actions
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {pendingDecisions.length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Awaiting approval
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats.successRate.toFixed(0)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Approved actions
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -2016,6 +2368,33 @@ export default function VoiceToCRM() {
           />
         </DialogContent>
       </Dialog>
+
+      {/* Approval Dialog */}
+      {selectedApprovalId && currentUserId && (
+        <ApprovalDialog
+          open={showApprovalDialog}
+          onClose={() => {
+            setShowApprovalDialog(false);
+            setSelectedApprovalId(null);
+          }}
+          requestId={selectedApprovalId}
+          currentUserId={currentUserId}
+          onApprove={async () => {
+            await loadPendingApprovals();
+            toast({
+              title: "Action Approved",
+              description: "CRM action has been approved and will be executed",
+            });
+          }}
+          onReject={async () => {
+            await loadPendingApprovals();
+            toast({
+              title: "Action Rejected",
+              description: "CRM action has been rejected",
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

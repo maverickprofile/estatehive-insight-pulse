@@ -1,10 +1,10 @@
 import ResponsiveLayout from "@/components/ResponsiveLayout";
-import AiToolsPage from "./AiTools";
+import AiToolsNew from "./AiToolsNew";
 
 const AiTools = () => {
   return (
     <ResponsiveLayout>
-      <AiToolsPage />
+      <AiToolsNew />
     </ResponsiveLayout>
   );
 };

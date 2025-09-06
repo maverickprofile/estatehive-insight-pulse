@@ -1,12 +1,12 @@
 import ResponsiveLayout from "@/components/ResponsiveLayout";
-import MessagesNew from "./MessagesNew";
+import AdsManager from "./AdsManager";
 
-const Messages = () => {
+const AdsManagerLayout = () => {
   return (
     <ResponsiveLayout>
-      <MessagesNew />
+      <AdsManager />
     </ResponsiveLayout>
   );
 };
 
-export default Messages;
+export default AdsManagerLayout;

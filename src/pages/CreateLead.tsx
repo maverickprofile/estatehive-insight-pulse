@@ -19,12 +19,13 @@ export default function CreateLeadPage() {
         email: '',
         phone: '',
         source: '',
-        interest: '',
+        interest_type: 'buy',
+        interested_in: '',
         location: '',
         budget: '',
         stage: 'new',
         priority: 'medium',
-        agent: '',
+        assigned_to: '',
         notes: ''
     });
 
@@ -37,18 +38,66 @@ export default function CreateLeadPage() {
         setLeadData(prev => ({ ...prev, [id]: value }));
     };
 
+    const parseBudget = (budgetString: string) => {
+        // Parse budget string like "80L - 1.2Cr" or "50L" or "1Cr"
+        const cleanBudget = budgetString.replace(/[₹,\s]/g, '');
+        const parts = cleanBudget.split('-');
+        
+        const parseValue = (val: string) => {
+            const num = parseFloat(val);
+            if (val.toLowerCase().includes('cr')) {
+                return num * 10000000; // Convert crores to actual number
+            } else if (val.toLowerCase().includes('l')) {
+                return num * 100000; // Convert lakhs to actual number
+            }
+            return num;
+        };
+
+        if (parts.length === 2) {
+            return {
+                budget_min: parseValue(parts[0]),
+                budget_max: parseValue(parts[1])
+            };
+        } else if (parts.length === 1 && cleanBudget) {
+            const value = parseValue(parts[0]);
+            return {
+                budget_min: value * 0.8, // 80% of value as min
+                budget_max: value * 1.2  // 120% of value as max
+            };
+        }
+        return { budget_min: null, budget_max: null };
+    };
+
     const addLeadMutation = useMutation({
         mutationFn: async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("User not found");
 
-            const { error } = await supabase.from('leads').insert([{
-                ...leadData,
-                // Ensure agent is assigned if not filled, or handle it based on your logic
-                agent: leadData.agent || 'Unassigned', 
-            }]);
+            const budgetValues = parseBudget(leadData.budget);
+            
+            const leadToInsert = {
+                name: leadData.name,
+                email: leadData.email || null,
+                phone: leadData.phone || null,
+                source: leadData.source || 'website',
+                interest_type: leadData.interest_type as 'buy' | 'sell' | 'rent' | 'lease' | 'invest',
+                interested_in: leadData.interested_in || leadData.location || null,
+                location: leadData.location || null,
+                budget_min: budgetValues.budget_min,
+                budget_max: budgetValues.budget_max,
+                stage: leadData.stage as any,
+                priority: leadData.priority as any,
+                assigned_to: leadData.assigned_to || null,
+                notes: leadData.notes || null,
+                location_preference: leadData.location ? [leadData.location] : []
+            };
 
-            if (error) throw error;
+            const { error } = await supabase.from('leads').insert([leadToInsert]);
+
+            if (error) {
+                console.error('Lead creation error:', error);
+                throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -56,7 +105,12 @@ export default function CreateLeadPage() {
             navigate('/leads');
         },
         onError: (error: any) => {
-            toast({ title: "Error", description: error.message, variant: "destructive" });
+            console.error('Lead creation failed:', error);
+            toast({ 
+                title: "Error", 
+                description: error.message || "Failed to create lead. Please check all fields.", 
+                variant: "destructive" 
+            });
         }
     });
 
@@ -75,23 +129,34 @@ export default function CreateLeadPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Column 1 */}
                     <div className="space-y-4">
-                        <Input id="name" placeholder="Full Name" value={leadData.name} onChange={handleInputChange} required />
+                        <Input id="name" placeholder="Full Name *" value={leadData.name} onChange={handleInputChange} required />
                         <Input id="email" placeholder="Email Address" type="email" value={leadData.email} onChange={handleInputChange} />
                         <Input id="phone" placeholder="Phone Number" value={leadData.phone} onChange={handleInputChange} />
                          <Select onValueChange={(value) => handleSelectChange('source', value)}>
                             <SelectTrigger><SelectValue placeholder="Lead Source" /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Website">Website</SelectItem>
-                                <SelectItem value="Referral">Referral</SelectItem>
-                                <SelectItem value="Facebook">Facebook</SelectItem>
-                                <SelectItem value="Google Ads">Google Ads</SelectItem>
-                                <SelectItem value="Walk-in">Walk-in</SelectItem>
+                                <SelectItem value="website">Website</SelectItem>
+                                <SelectItem value="referral">Referral</SelectItem>
+                                <SelectItem value="social_media">Social Media</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="phone">Phone</SelectItem>
+                                <SelectItem value="walk_in">Walk-in</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select onValueChange={(value) => handleSelectChange('interest_type', value)} defaultValue="buy">
+                            <SelectTrigger><SelectValue placeholder="Interest Type" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="buy">Buy</SelectItem>
+                                <SelectItem value="sell">Sell</SelectItem>
+                                <SelectItem value="rent">Rent</SelectItem>
+                                <SelectItem value="lease">Lease</SelectItem>
+                                <SelectItem value="invest">Invest</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                     {/* Column 2 */}
                     <div className="space-y-4">
-                        <Input id="interest" placeholder="Property Interest (e.g., 3BHK Apartment)" value={leadData.interest} onChange={handleInputChange} />
+                        <Input id="interested_in" placeholder="Property Interest (e.g., 3BHK Apartment)" value={leadData.interested_in} onChange={handleInputChange} />
                         <Input id="location" placeholder="Preferred Location" value={leadData.location} onChange={handleInputChange} />
                         <Input id="budget" placeholder="Budget (e.g., ₹80L - ₹1.2Cr)" value={leadData.budget} onChange={handleInputChange} />
                         <Select onValueChange={(value) => handleSelectChange('priority', value)} defaultValue="medium">
@@ -102,6 +167,13 @@ export default function CreateLeadPage() {
                                 <SelectItem value="low">Low</SelectItem>
                             </SelectContent>
                         </Select>
+                        <Textarea 
+                            id="notes" 
+                            placeholder="Additional notes..." 
+                            value={leadData.notes} 
+                            onChange={handleInputChange}
+                            className="min-h-[100px]"
+                        />
                     </div>
                 </div>
 

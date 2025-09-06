@@ -48,6 +48,9 @@ class ImprovedTelegramService {
   private downloadCache: Map<string, Blob> = new Map();
   private downloadInProgress: Map<string, Promise<Blob>> = new Map();
   
+  // Public callback for external services to handle callback queries
+  public onCallbackQuery: ((callbackQuery: any) => Promise<void>) | null = null;
+  
   constructor() {
     // Ensure singleton
     if (ImprovedTelegramService.instance) {
@@ -375,6 +378,17 @@ Send me a voice message to get started! 🎤
    */
   private async handleCallbackQuery(botId: string, callbackQuery: any): Promise<void> {
     console.log('Callback query received:', callbackQuery);
+    
+    // Check if external handler is registered (for approval integration)
+    if (this.onCallbackQuery && callbackQuery.data) {
+      // Check if this is an approval-related callback
+      if (callbackQuery.data.startsWith('approve_') || 
+          callbackQuery.data.startsWith('reject_') || 
+          callbackQuery.data.startsWith('details_')) {
+        await this.onCallbackQuery(callbackQuery);
+        return;
+      }
+    }
     
     try {
       // Answer the callback query to remove loading state
@@ -1098,24 +1112,38 @@ Send me a voice message to get started! 🎤
   /**
    * Answer callback query
    */
-  private async answerCallbackQuery(botId: string, callbackQueryId: string): Promise<void> {
+  public async answerCallbackQuery(callbackQueryId: string, text?: string, showAlert: boolean = false): Promise<void> {
+    // Get any active bot config (we'll use the first one)
+    const botId = Array.from(this.configs.keys())[0];
+    if (!botId) {
+      console.error('No bot configuration available');
+      return;
+    }
     const config = this.configs.get(botId);
     if (!config) return;
 
     await this.makeApiCall(config.bot_token, 'answerCallbackQuery', {
       callback_query_id: callbackQueryId,
+      text: text,
+      show_alert: showAlert
     });
   }
 
   /**
    * Edit message text
    */
-  private async editMessage(
-    botId: string,
+  public async editMessageText(
     chatId: string | number,
     messageId: number,
-    text: string
+    text: string,
+    options: any = {}
   ): Promise<void> {
+    // Get any active bot config (we'll use the first one)
+    const botId = Array.from(this.configs.keys())[0];
+    if (!botId) {
+      console.error('No bot configuration available');
+      return;
+    }
     const config = this.configs.get(botId);
     if (!config) return;
 
@@ -1123,7 +1151,20 @@ Send me a voice message to get started! 🎤
       chat_id: chatId,
       message_id: messageId,
       text: text,
+      ...options
     });
+  }
+  
+  /**
+   * Edit message (legacy private method for backward compatibility)
+   */
+  private async editMessage(
+    botId: string,
+    chatId: string | number,
+    messageId: number,
+    text: string
+  ): Promise<void> {
+    await this.editMessageText(chatId, messageId, text);
   }
 
   /**
@@ -1198,6 +1239,16 @@ Send me a voice message to get started! 🎤
       'add_note': 'Add Note',
     };
     return titles[decision.decision_type] || decision.decision_type;
+  }
+
+  /**
+   * Stop all bots
+   */
+  stopAllBots(): void {
+    console.log('Stopping all Telegram bots...');
+    for (const botId of this.configs.keys()) {
+      this.stopBot(botId).catch(console.error);
+    }
   }
 
   /**

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import type { LucideIcon } from "lucide-react";
+import { formatIndianCurrency } from "@/lib/currency-formatter";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Building2,
   Users,
@@ -137,12 +139,8 @@ const fetchNotifications = async (userId: string) => {
   return data;
 };
 
-// Revenue formatting function
-const formatRevenue = (value: number) => {
-  if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)} Cr`;
-  if (value >= 100000) return `₹${(value / 100000).toFixed(2)} L`;
-  return `₹${value.toLocaleString()}`;
-};
+// Use the new currency formatter for consistency
+const formatRevenue = (value: number) => formatIndianCurrency(value, { compact: true, showDecimal: false });
 
 interface KpiCardProps {
   title: string;
@@ -150,14 +148,14 @@ interface KpiCardProps {
   icon: LucideIcon;
 }
 
-// Memoized KpiCard component to prevent unnecessary re-renders
+// Memoized KpiCard component with tabular numbers for consistency
 const KpiCard = React.memo(function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
   return (
     <div className="metric-card p-3 sm:p-4">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
-          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl md:text-3xl font-bold truncate">{value}</p>
+          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl md:text-3xl font-bold truncate tabular-nums">{value}</p>
         </div>
         <div className="p-2 sm:p-3 rounded-lg bg-primary/10 flex-shrink-0">
           <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
@@ -423,12 +421,12 @@ function Dashboard() {
     setCurrentPropertyIndex(index);
   }, []);
 
-  // Memoized KPI values
+  // Memoized KPI values with proper ordering
   const kpiValues = useMemo(() => ({
-    totalProperties: metrics ? `${metrics.totalProperties}` : "...",
-    leadsToday: metrics ? `${metrics.leadsToday}` : "...",
     revenue: metrics ? formatRevenue(metrics.revenueThisMonth) : "...",
-    activeListings: metrics ? `${metrics.activeListings}` : "..."
+    activeProperties: metrics ? `${metrics.activeListings}` : "...",
+    leadsToday: metrics ? `${metrics.leadsToday}` : "...",
+    totalProperties: metrics ? `${metrics.totalProperties}` : "...",
   }), [metrics]);
 
   // Memoized rendered properties for slideshow
@@ -443,18 +441,31 @@ function Dashboard() {
     [recentProperties, handlePropertyNavigation]
   );
 
-  // Memoized rendered agents
-  const renderedAgents = useMemo(() => 
-    topAgents.slice(0, 5).map((agent: Agent, index: number) => (
+  // Memoized rendered agents with empty state
+  const renderedAgents = useMemo(() => {
+    if (!topAgents || topAgents.length === 0) {
+      return (
+        <EmptyState
+          icon={Users}
+          title="No agents yet"
+          description="Start adding agents to see performance metrics"
+          action={{
+            label: "Add Agent",
+            onClick: () => navigate("/agents/new"),
+          }}
+          size="sm"
+        />
+      );
+    }
+    return topAgents.slice(0, 5).map((agent: Agent, index: number) => (
       <AgentItem
         key={agent.name}
         agent={agent}
         index={index}
         maxRevenue={maxAgentRevenue}
       />
-    )),
-    [topAgents, maxAgentRevenue]
-  );
+    ));
+  }, [topAgents, maxAgentRevenue, navigate]);
 
   // Memoized loading skeletons
   const agentSkeletons = useMemo(() => 
@@ -499,11 +510,16 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Reordered as per requirements */}
       <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Total Properties"
-          value={kpiValues.totalProperties}
+          title="Revenue This Month"
+          value={kpiValues.revenue}
+          icon={IndianRupee}
+        />
+        <KpiCard
+          title="Active Properties"
+          value={kpiValues.activeProperties}
           icon={Building2}
         />
         <KpiCard
@@ -512,13 +528,8 @@ function Dashboard() {
           icon={Users}
         />
         <KpiCard
-          title="Revenue"
-          value={kpiValues.revenue}
-          icon={IndianRupee}
-        />
-        <KpiCard
-          title="Active"
-          value={kpiValues.activeListings}
+          title="Total Properties"
+          value={kpiValues.totalProperties}
           icon={TrendingUp}
         />
       </div>
@@ -529,16 +540,14 @@ function Dashboard() {
           <div className={CARD_CLASS}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <h3 className="text-base sm:text-lg font-semibold">Monthly Performance</h3>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => navigate("/analytics")}
-                className="text-xs sm:text-sm"
+                className="text-xs sm:text-sm text-primary hover:underline inline-flex items-center gap-1 transition-all"
               >
                 <span className="hidden sm:inline">View Full Reports</span>
                 <span className="sm:hidden">View All</span>
-                <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
-              </Button>
+                <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+              </button>
             </div>
             <div className="overflow-x-auto">
               <Suspense fallback={

@@ -8,7 +8,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Dot,
 } from "recharts";
+import { formatIndianCurrency } from "@/lib/currency-formatter";
 
 // Admin dashboard chart data
 const salesData = [
@@ -26,11 +28,9 @@ const salesData = [
   { month: "Jul '25", revenue: 6800000, propertiesSold: 13, newLeads: 230 },
 ];
 
-// Format for Y-axis currency labels
+// Format for Y-axis currency labels - remove decimals for clean display
 const formatCurrency = (value: number) => {
-  if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
-  if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-  return `₹${value.toLocaleString()}`;
+  return formatIndianCurrency(value, { compact: true, showDecimal: false });
 };
 
 // Theme-aware custom tooltip
@@ -75,9 +75,9 @@ export default function SalesChart() {
     return () => observer.disconnect();
   }, []);
 
-  // Dynamic colors based on theme
+  // Dynamic colors based on theme with lighter gridlines
   const textColor = isDark ? "#d1d5db" : "#6b7280";
-  const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+  const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
 
   return (
     <div className="h-96">
@@ -99,7 +99,7 @@ export default function SalesChart() {
             </linearGradient>
           </defs>
 
-          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.3} />
           <XAxis
             dataKey="month"
             axisLine={false}
@@ -112,17 +112,34 @@ export default function SalesChart() {
             axisLine={false}
             tickLine={false}
             tickFormatter={formatCurrency}
-            tick={{ fill: textColor, fontSize: 12 }}
+            tick={{ fill: textColor, fontSize: 11 }}
+            label={{ 
+              value: "Revenue (₹)", 
+              angle: -90, 
+              position: "insideLeft",
+              style: { textAnchor: 'middle', fill: textColor, fontSize: 12 }
+            }}
           />
           <YAxis
             yAxisId="right"
             orientation="right"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: textColor, fontSize: 12 }}
+            tick={{ fill: textColor, fontSize: 11 }}
+            label={{ 
+              value: "Leads Count", 
+              angle: 90, 
+              position: "insideRight",
+              style: { textAnchor: 'middle', fill: textColor, fontSize: 12 }
+            }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
+          <Legend 
+            wrapperStyle={{ paddingTop: "20px" }}
+            iconType="line"
+            verticalAlign="bottom"
+            height={36}
+          />
           <Area
             yAxisId="left"
             type="monotone"
@@ -130,7 +147,9 @@ export default function SalesChart() {
             stroke="#3b82f6"
             fill="url(#colorRevenue)"
             strokeWidth={2}
-            name="Revenue (₹)"
+            name="Revenue"
+            dot={{ fill: '#3b82f6', r: 3 }}
+            activeDot={{ r: 5 }}
           />
           <Area
             yAxisId="right"
@@ -139,7 +158,9 @@ export default function SalesChart() {
             stroke="#22c55e"
             fill="url(#colorLeads)"
             strokeWidth={2}
-            name="New Leads"
+            name="Leads"
+            dot={{ fill: '#22c55e', r: 3 }}
+            activeDot={{ r: 5 }}
           />
         </AreaChart>
       </ResponsiveContainer>

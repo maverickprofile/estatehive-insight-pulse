@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatIndianCurrency } from "@/lib/currency-formatter";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -217,12 +219,7 @@ export default function PropertiesPage() {
 
   const formatPrice = (price: number | null) => {
     if (!price) return "Price on Request";
-    if (price >= 10000000) {
-      return `₹${(price / 10000000).toFixed(2)} Cr`;
-    } else if (price >= 100000) {
-      return `₹${(price / 100000).toFixed(2)} L`;
-    }
-    return `₹${price.toLocaleString("en-IN")}`;
+    return formatIndianCurrency(price, { compact: true, showDecimal: false });
   };
 
   const filteredProperties = properties.filter(property => {
@@ -343,13 +340,13 @@ export default function PropertiesPage() {
                   <div className="text-xs font-medium text-orange-600 dark:text-orange-400 uppercase tracking-wider">
                     Deals Closed
                   </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    This Month
+                  </div>
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{stats.sold} Sold • {stats.rented} Rented</span>
-                <div className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded-full">
-                  This Month
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -390,23 +387,21 @@ export default function PropertiesPage() {
                   <h3 className="text-lg font-semibold">Find Properties</h3>
                   <p className="text-sm text-muted-foreground">Search and filter your property portfolio</p>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                    <span>{filteredProperties.length} properties found</span>
-                  </div>
-                </div>
               </div>
 
-              {/* Search Bar */}
+              {/* Search Bar with result count */}
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search properties by title, location, features, or price range..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 text-sm border-muted-foreground/20 focus:border-primary/50 bg-muted/20"
+                  className="pl-12 pr-32 h-12 text-sm border-muted-foreground/20 focus:border-primary/50 bg-muted/20"
                 />
+                {/* Results count inside search bar */}
+                <div className="absolute right-12 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  <span className="tabular-nums">{filteredProperties.length}</span> results
+                </div>
                 {searchTerm && (
                   <Button
                     variant="ghost"
@@ -419,16 +414,12 @@ export default function PropertiesPage() {
                 )}
               </div>
               
-              {/* Filter Categories */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Property Type</label>
+              {/* Filter Categories - All on one row with Reset */}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[150px]">
                   <Select value={selectedType} onValueChange={setSelectedType}>
                     <SelectTrigger className="h-10 border-muted-foreground/20">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="All Types" />
-                      </div>
+                      <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -465,14 +456,10 @@ export default function PropertiesPage() {
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Listing Category</label>
+                <div className="flex-1 min-w-[150px]">
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                     <SelectTrigger className="h-10 border-muted-foreground/20">
-                      <div className="flex items-center gap-2">
-                        <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="All Categories" />
-                      </div>
+                      <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -503,14 +490,10 @@ export default function PropertiesPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">EH Category</label>
+                <div className="flex-1 min-w-[150px]">
                   <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
                     <SelectTrigger className="h-10 border-muted-foreground/20">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="All EH Categories" />
-                      </div>
+                      <SelectValue placeholder="All EH Categories" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -547,14 +530,10 @@ export default function PropertiesPage() {
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Status</label>
+                <div className="flex-1 min-w-[150px]">
                   <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                     <SelectTrigger className="h-10 border-muted-foreground/20">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="All Status" />
-                      </div>
+                      <SelectValue placeholder="All Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">
@@ -603,50 +582,44 @@ export default function PropertiesPage() {
                   </Select>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Quick Actions</label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 h-10 text-xs"
-                      onClick={() => {
-                        setSelectedType("all");
-                        setSelectedCategory("all");
-                        setSelectedSubcategory("all");
-                        setSelectedStatus("all");
-                        setSearchTerm("");
-                      }}
-                    >
-                      <Filter className="h-3 w-3 mr-1" />
-                      Clear All
-                    </Button>
-                  </div>
-                </div>
+                {/* Reset Button at the end */}
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="h-10"
+                  onClick={() => {
+                    setSelectedType("all");
+                    setSelectedCategory("all");
+                    setSelectedSubcategory("all");
+                    setSelectedStatus("all");
+                    setSearchTerm("");
+                    setPriceRange({ min: "", max: "" });
+                  }}
+                >
+                  Reset
+                </Button>
               </div>
 
-              {/* Active Filters Display */}
+              {/* Active Filters Display as removable chips below */}
               {(selectedType !== "all" || selectedCategory !== "all" || selectedSubcategory !== "all" || selectedStatus !== "all" || searchTerm) && (
-                <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-lg">
-                  <span className="text-xs font-medium text-muted-foreground">Active filters:</span>
+                <div className="flex flex-wrap gap-2">
                   {selectedType !== "all" && (
-                    <Badge variant="secondary" className="gap-1 capitalize">
-                      Type: {selectedType}
+                    <Badge variant="secondary" className="gap-1 capitalize cursor-pointer hover:bg-muted">
+                      <span>Type: {selectedType}</span>
                       <button
                         onClick={() => setSelectedType("all")}
-                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                        className="ml-1 hover:text-destructive"
                       >
                         ×
                       </button>
                     </Badge>
                   )}
                   {selectedCategory !== "all" && (
-                    <Badge variant="secondary" className="gap-1 capitalize">
-                      Category: {selectedCategory}
+                    <Badge variant="secondary" className="gap-1 capitalize cursor-pointer hover:bg-muted">
+                      <span>Category: {selectedCategory}</span>
                       <button
                         onClick={() => setSelectedCategory("all")}
-                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                        className="ml-1 hover:text-destructive"
                       >
                         ×
                       </button>
@@ -669,11 +642,11 @@ export default function PropertiesPage() {
                     </Badge>
                   )}
                   {selectedStatus !== "all" && (
-                    <Badge variant="secondary" className="gap-1 capitalize">
-                      Status: {selectedStatus}
+                    <Badge variant="secondary" className="gap-1 capitalize cursor-pointer hover:bg-muted">
+                      <span>Status: {selectedStatus.replace("_", " ")}</span>
                       <button
                         onClick={() => setSelectedStatus("all")}
-                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                        className="ml-1 hover:text-destructive"
                       >
                         ×
                       </button>

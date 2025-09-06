@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Approval System & CRM Execution</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .step {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        .step::before {
+            content: "✓ ";
+            color: green;
+            font-weight: bold;
+            margin-left: -20px;
+        }
+        .pending::before {
+            content: "○ ";
+            color: orange;
+        }
+        .failed::before {
+            content: "✗ ";
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Test Approval System & Automatic CRM Execution</h1>
+        
+        <div class="status info">
+            <strong>System Status:</strong> The approval system is now configured for automatic CRM execution!
+        </div>
+
+        <div class="test-section">
+            <h2>✅ What's Been Fixed</h2>
+            <div class="step">Fixed typo in crm-actions.service.ts (executeLeadAction was broken)</div>
+            <div class="step">Modified code to handle missing database columns</div>
+            <div class="step">Implemented automatic CRM execution on approval</div>
+            <div class="step">Added error resilience for schema mismatches</div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔧 Required: Run SQL Script</h2>
+            <div class="status warning">
+                <strong>Important:</strong> You must run the SQL script in Supabase to add missing columns!
+            </div>
+            <ol>
+                <li>Open Supabase Dashboard → SQL Editor</li>
+                <li>Copy contents from: <code>RUN_THIS_SQL_TO_FIX_APPROVALS.sql</code></li>
+                <li>Paste and run in SQL Editor</li>
+                <li>Verify no errors occurred</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test Workflow</h2>
+            <h3>Step 1: Create Test Approval</h3>
+            <p>Send voice message or use the test button below:</p>
+            <button onclick="testCreateApproval()">Create Test Approval Request</button>
+            <div id="approval-result"></div>
+
+            <h3>Step 2: Check Approval Queue</h3>
+            <p>Go to: <a href="http://localhost:8080/#/approval-queue" target="_blank">Approval Queue</a></p>
+            <p>You should see the test approval request</p>
+
+            <h3>Step 3: Approve & Watch Magic</h3>
+            <p>Click "Approve" and watch the console for:</p>
+            <pre>✅ CRM action executed successfully: Lead created: Test Lead</pre>
+
+            <h3>Step 4: Verify in Database</h3>
+            <button onclick="checkDatabase()">Check if Lead was Created</button>
+            <div id="db-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 How It Works Now</h2>
+            <pre>
+Voice: "Create lead for Mahesh"
+    ↓
+Approval Request Created
+    ↓
+Manager Approves (Dashboard/Telegram)
+    ↓
+🎯 AUTOMATIC: executeApprovedAction() runs
+    ↓
+✅ Lead inserted in database instantly!
+            </pre>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 Console Messages to Watch For</h2>
+            <div class="status success">
+                <strong>Success:</strong>
+                <ul>
+                    <li>✅ Approval action saved to approval_actions table</li>
+                    <li>✅ Executing CRM action for approved request</li>
+                    <li>✅ CRM action executed successfully: Lead created</li>
+                </ul>
+            </div>
+            <div class="status error">
+                <strong>If you see errors:</strong>
+                <ul>
+                    <li>❌ "Action is not defined" - Fixed! (was a typo)</li>
+                    <li>❌ "Column not found" - Run the SQL script</li>
+                    <li>❌ "Table does not exist" - Run the SQL script</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎉 Success Criteria</h2>
+            <div class="step">No "Action is not defined" errors</div>
+            <div class="step">Approval shows in queue</div>
+            <div class="step">Approve button works</div>
+            <div class="step">Lead automatically created in database</div>
+            <div class="step">Console shows success message</div>
+        </div>
+
+        <div class="status success">
+            <h3>🚀 The system is ready!</h3>
+            <p>Once you run the SQL script, approvals will automatically execute CRM actions.</p>
+            <p>No manual intervention needed - it's fully automated!</p>
+        </div>
+    </div>
+
+    <script>
+        function testCreateApproval() {
+            document.getElementById('approval-result').innerHTML = `
+                <div class="status info">
+                    <p>To create a test approval:</p>
+                    <ol>
+                        <li>Go to Voice CRM page</li>
+                        <li>Send voice message: "Create lead for Test User with budget 50 lakhs"</li>
+                        <li>Or run this SQL in Supabase:</li>
+                    </ol>
+                    <pre>
+INSERT INTO approval_requests (
+    entity_type, action_type, status, priority,
+    metadata, created_at, requested_at, expires_at
+) VALUES (
+    'lead', 'create', 'pending', 'high',
+    '{"proposed_changes": {"name": "Test Lead", "phone": "+91-9999999999"}}',
+    NOW(), NOW(), NOW() + INTERVAL '24 hours'
+);
+                    </pre>
+                </div>
+            `;
+        }
+
+        function checkDatabase() {
+            document.getElementById('db-result').innerHTML = `
+                <div class="status info">
+                    <p>Run this SQL in Supabase to check if leads were created:</p>
+                    <pre>
+SELECT * FROM leads 
+WHERE source = 'voice_crm' 
+ORDER BY created_at DESC 
+LIMIT 5;
+                    </pre>
+                    <p>If you see leads, the automatic CRM execution is working!</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

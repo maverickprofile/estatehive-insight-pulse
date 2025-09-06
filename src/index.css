@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Real Estate CRM Dashboard Design System */
+/* Real Estate CRM Dashboard Design System - Following 8pt spacing system */
 @layer base {
   :root {
     --background: 0 0% 98%;
@@ -32,25 +32,121 @@
     --input: 210 20% 88%;
     --ring: 150 60% 30%;
     
-    --success: 140 70% 45%;
-    --success-foreground: 0 0% 98%;
+    /* Status Colors with improved contrast */
+    --success: 140 60% 40%; /* Darker for better contrast */
+    --success-foreground: 0 0% 100%;
     
-    --warning: 35 85% 55%;
-    --warning-foreground: 210 11% 15%;
+    --warning: 35 85% 50%; /* Slightly darker */
+    --warning-foreground: 0 0% 100%;
     
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 50%; /* Slightly darker */
+    --destructive-foreground: 0 0% 100%;
     
-    --radius: 0.75rem;
+    --info: 200 70% 50%;
+    --info-foreground: 0 0% 100%;
+    
+    /* 8pt Spacing System */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    --spacing-3xl: 40px;
+    --spacing-4xl: 48px;
+    --spacing-5xl: 56px;
+    --spacing-6xl: 64px;
+    
+    /* Border Radius Tokens */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+    --radius: 12px; /* Default radius */
+    
+    /* Typography Scale */
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
+    --font-size-2xl: 24px;
+    --font-size-3xl: 28px;
+    --font-size-4xl: 32px;
+    
+    /* Font Weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Letter Spacing */
+    --letter-spacing-tight: -0.01em;
+    --letter-spacing-normal: 0;
+    --letter-spacing-wide: 0.01em;
+    
+    /* Line Heights */
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(150, 60%, 30%), hsl(150, 55%, 40%));
     --gradient-accent: linear-gradient(135deg, hsl(45, 90%, 55%), hsl(45, 85%, 65%));
     --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%), hsl(210, 15%, 98%));
     
-    /* Shadows */
-    --shadow-card: 0 4px 12px -2px hsl(210, 20%, 80%, 0.15), 0 2px 8px -2px hsl(210, 20%, 70%, 0.1);
-    --shadow-elevated: 0 8px 24px -4px hsl(210, 20%, 80%, 0.2), 0 4px 16px -4px hsl(210, 20%, 70%, 0.15);
+    /* Shadows - Standardized elevation system */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+    --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    
+    /* Legacy shadow names for compatibility */
+    --shadow-card: var(--shadow-sm);
+    --shadow-elevated: var(--shadow-md);
+    
+    /* Transition Durations */
+    --transition-fast: 120ms;
+    --transition-normal: 180ms;
+    --transition-slow: 240ms;
+    
+    /* Z-Index Scale */
+    --z-dropdown: 10;
+    --z-sticky: 20;
+    --z-overlay: 30;
+    --z-modal: 40;
+    --z-popover: 50;
+    --z-toast: 60;
+    --z-tooltip: 70;
+    
+    /* Component Sizes */
+    --button-height-sm: 32px;
+    --button-height-md: 40px;
+    --button-height-lg: 48px;
+    
+    --avatar-size-sm: 32px;
+    --avatar-size-md: 40px;
+    --avatar-size-lg: 48px;
+    --avatar-size-xl: 56px;
+    
+    --icon-size-xs: 16px;
+    --icon-size-sm: 18px;
+    --icon-size-md: 20px;
+    --icon-size-lg: 24px;
+    --icon-size-xl: 28px;
+    
+    /* Hit Target Sizes for Accessibility */
+    --hit-target-min: 44px; /* WCAG minimum */
+    --hit-target-preferred: 48px;
+    
+    /* Table Row Heights */
+    --table-row-compact: 48px;
+    --table-row-normal: 56px;
+    --table-row-relaxed: 64px;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
@@ -64,34 +160,57 @@
   }
 
   .dark {
-    --background: 210 15% 6%;
-    --foreground: 210 10% 92%;
+    /* Dark mode with improved contrast ratios */
+    --background: 11 9% 8%; /* #0B0F14 */
+    --foreground: 214 13% 90%; /* #D6DCE5 */
     
     --primary: 150 50% 45%;
-    --primary-foreground: 210 15% 6%;
+    --primary-foreground: 0 0% 100%;
     
     --accent: 45 85% 60%;
-    --accent-foreground: 210 15% 6%;
+    --accent-foreground: 11 9% 8%;
     
-    --card: 210 15% 8%;
-    --card-foreground: 210 10% 92%;
+    --card: 216 14% 10%; /* #11161C */
+    --card-foreground: 214 13% 90%;
     
-    --secondary: 210 15% 12%;
-    --secondary-foreground: 210 10% 80%;
+    --secondary: 220 13% 16%; /* #1D2430 */
+    --secondary-foreground: 214 13% 90%;
     
-    --muted: 210 15% 15%;
-    --muted-foreground: 210 8% 60%;
+    --muted: 220 13% 16%;
+    --muted-foreground: 214 8% 65%;
     
-    --border: 210 15% 18%;
-    --input: 210 15% 18%;
+    --border: 220 13% 18%; /* #1D2430 */
+    --input: 220 13% 18%;
     
-    --sidebar-background: 210 15% 8%;
-    --sidebar-foreground: 210 10% 80%;
+    /* Status Colors with better dark mode contrast */
+    --success: 140 50% 50%; /* #28A745 */
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 35 90% 60%; /* #F59E0B */
+    --warning-foreground: 0 0% 0%;
+    
+    --destructive: 0 85% 60%; /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+    
+    --info: 217 91% 65%; /* #3B82F6 */
+    --info-foreground: 0 0% 100%;
+    
+    /* Dark mode shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3), 0 10px 10px rgba(0, 0, 0, 0.14);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.35);
+    
+    /* Sidebar dark mode */
+    --sidebar-background: 216 14% 10%;
+    --sidebar-foreground: 214 13% 80%;
     --sidebar-primary: 150 50% 45%;
-    --sidebar-primary-foreground: 210 15% 6%;
-    --sidebar-accent: 210 15% 12%;
-    --sidebar-accent-foreground: 150 50% 45%;
-    --sidebar-border: 210 15% 15%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 13% 14%;
+    --sidebar-accent-foreground: 150 50% 55%;
+    --sidebar-border: 220 13% 15%;
   }
 }
 
@@ -101,25 +220,178 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Monospaced font for numbers */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+
+  /* Focus ring styles */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Smooth transitions */
+  .transition-base {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: var(--transition-normal);
+  }
+
+  /* Accessibility: high contrast mode support */
+  @media (prefers-contrast: high) {
+    :root {
+      --border: 0 0% 40%;
+      --muted-foreground: 0 0% 35%;
+    }
+    
+    .dark {
+      --border: 0 0% 60%;
+      --muted-foreground: 0 0% 75%;
+    }
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
+  /* Card Components with consistent spacing and shadows */
   .metric-card {
-    @apply bg-card rounded-lg p-6 shadow-[var(--shadow-card)] border border-border/60 hover:shadow-[var(--shadow-elevated)] transition-all duration-300;
+    @apply bg-card border border-border/60 transition-all;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .metric-card:hover {
+    box-shadow: var(--shadow-md);
+    transition-duration: var(--transition-normal);
   }
   
   .property-card {
-    @apply bg-card rounded-xl p-4 shadow-[var(--shadow-card)] border border-border/60 hover:shadow-[var(--shadow-elevated)] transition-all duration-300 hover:scale-[1.02];
+    @apply bg-card border border-border/60 transition-all;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
   }
   
+  .property-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    transition-duration: var(--transition-normal);
+  }
+  
+  /* Navigation Links with improved states */
   .nav-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200;
+    @apply flex items-center text-sidebar-foreground relative transition-all;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    transition-duration: var(--transition-fast);
+  }
+  
+  .nav-link:hover {
+    @apply bg-sidebar-accent/50 text-sidebar-accent-foreground;
   }
   
   .nav-link.active {
-    @apply bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md;
+    @apply bg-primary text-primary-foreground font-semibold;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 70%;
+    background: hsl(var(--primary-foreground));
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  
+  /* Empty State Component */
+  .empty-state {
+    @apply flex flex-col items-center justify-center text-center;
+    padding: var(--spacing-4xl) var(--spacing-xl);
+    min-height: 300px;
+  }
+  
+  .empty-state-icon {
+    @apply text-muted-foreground mb-4;
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
+  }
+  
+  .empty-state-title {
+    @apply text-lg font-semibold mb-2;
+    font-size: var(--font-size-lg);
+  }
+  
+  .empty-state-description {
+    @apply text-muted-foreground mb-6 max-w-sm;
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Table Styles with proper row heights */
+  .table-row {
+    height: var(--table-row-normal);
+    @apply border-b border-border/50 hover:bg-muted/50 transition-colors;
+  }
+  
+  .table-row-compact {
+    height: var(--table-row-compact);
+  }
+  
+  .table-row-relaxed {
+    height: var(--table-row-relaxed);
+  }
+  
+  /* Hit Target Improvements */
+  .clickable {
+    min-height: var(--hit-target-min);
+    min-width: var(--hit-target-min);
+    @apply inline-flex items-center justify-center;
+  }
+  
+  /* Loading States */
+  .skeleton {
+    @apply animate-pulse bg-muted;
+    border-radius: var(--radius-sm);
+  }
+  
+  /* Badge Variants */
+  .badge-tier {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium;
+    border-radius: var(--radius-full);
+  }
+  
+  .badge-tier-vip {
+    @apply bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300;
+  }
+  
+  .badge-tier-gold {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300;
+  }
+  
+  .badge-tier-silver {
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300;
+  }
+  
+  .badge-tier-bronze {
+    @apply bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300;
   }
 }
 

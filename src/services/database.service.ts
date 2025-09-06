@@ -408,6 +408,7 @@ export const leadsService = {
     stage?: string
     priority?: string
     assigned_to?: string
+    source?: string
   }) {
     let query = supabase
       .from('leads')
@@ -421,6 +422,9 @@ export const leadsService = {
     }
     if (filters?.assigned_to) {
       query = query.eq('assigned_to', filters.assigned_to)
+    }
+    if (filters?.source) {
+      query = query.eq('source', filters.source)
     }
     
     // Sort by created_at descending (newest first)
@@ -464,15 +468,6 @@ export const leadsService = {
     return data
   },
 
-  async convertLeadToClient(leadId: number) {
-    const { data, error } = await supabase
-      .rpc('convert_lead_to_client', {
-        p_lead_id: leadId
-      })
-    
-    if (error) throw error
-    return data
-  },
 
   async getLeadStatistics(userId?: string, dateFrom?: string, dateTo?: string) {
     const { data, error } = await supabase
@@ -505,6 +500,27 @@ export const leadsService = {
     
     if (error) throw error
     return { success: true }
+  },
+
+  async searchLeads(searchTerm: string) {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,location.ilike.%${searchTerm}%,notes.ilike.%${searchTerm}%`)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  },
+
+  async convertToClient(leadId: number) {
+    const { data, error } = await supabase
+      .rpc('convert_lead_to_client', {
+        p_lead_id: leadId
+      })
+    
+    if (error) throw error
+    return data
   }
 }
 

@@ -10,14 +10,14 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background flex w-full">
+    <div className="h-screen bg-background flex w-full overflow-hidden">
       <div className="hidden md:block">
         <Sidebar />
       </div>
       <div className="md:hidden">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       </div>
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-auto">
           {children}

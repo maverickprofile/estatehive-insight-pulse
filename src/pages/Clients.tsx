@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatIndianCurrency } from "@/lib/currency-formatter";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -67,43 +69,49 @@ import { Client } from "@/types/database.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+// Unified badge system with consistent colors
 const statusConfig = {
   active: { 
-    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200",
     label: "Active"
   },
   inactive: { 
-    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200",
     label: "Inactive"
   },
   prospect: { 
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-blue-200",
     label: "Prospect"
   },
   vip: { 
-    color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+    color: "badge-tier-vip",
     label: "VIP"
   }
 };
 
+// Loyalty tiers with outlined style for harmony
 const loyaltyTierConfig = {
   bronze: { 
-    color: "text-orange-600",
+    color: "badge-tier-bronze",
+    textColor: "text-orange-600 dark:text-orange-400",
     icon: Trophy,
     minPurchases: 0
   },
   silver: { 
-    color: "text-gray-600",
+    color: "badge-tier-silver",
+    textColor: "text-gray-600 dark:text-gray-400",
     icon: Trophy,
     minPurchases: 3
   },
   gold: { 
-    color: "text-yellow-600",
+    color: "badge-tier-gold",
+    textColor: "text-yellow-600 dark:text-yellow-400",
     icon: Trophy,
     minPurchases: 5
   },
   platinum: { 
-    color: "text-purple-600",
+    color: "badge-tier-vip",
+    textColor: "text-purple-600 dark:text-purple-400",
     icon: Crown,
     minPurchases: 10
   }
@@ -250,18 +258,18 @@ export default function ClientsPage() {
         </Button>
       </div>
 
-      {/* Statistics */}
+      {/* Statistics - Normalized card row heights and icon alignment */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
         <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2 h-[60px]">
             <CardTitle className="text-xs sm:text-sm font-medium">Total Clients</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-blue-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400" />
+              <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" style={{width: 'var(--icon-size-md)', height: 'var(--icon-size-md)'}} />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+            <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent tabular-nums">
               {stats.total}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -277,7 +285,7 @@ export default function ClientsPage() {
         </Card>
         <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
           <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2 h-[60px]">
             <CardTitle className="text-xs sm:text-sm font-medium">Active Clients</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-green-600 dark:text-green-400" />
@@ -299,7 +307,7 @@ export default function ClientsPage() {
         </Card>
         <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2 h-[60px]">
             <CardTitle className="text-xs sm:text-sm font-medium">VIP Clients</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600 dark:text-purple-400" />
@@ -322,15 +330,15 @@ export default function ClientsPage() {
         </Card>
         <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2 h-[60px]">
             <CardTitle className="text-xs sm:text-sm font-medium">Total Revenue</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-600 bg-clip-text text-transparent">
-              ₹{stats.totalValue.toLocaleString()}
+            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-amber-600 to-amber-800 dark:from-amber-400 dark:to-amber-600 bg-clip-text text-transparent tabular-nums">
+              {formatIndianCurrency(stats.totalValue, { compact: true, showDecimal: false })}
             </div>
             <p className="text-xs text-muted-foreground">
               From all clients
@@ -345,15 +353,15 @@ export default function ClientsPage() {
         </Card>
         <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent" />
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2 h-[60px]">
             <CardTitle className="text-xs sm:text-sm font-medium">Avg. Lifetime Value</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
           </CardHeader>
           <CardContent className="relative p-3 sm:p-6">
-            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-400 dark:to-indigo-600 bg-clip-text text-transparent">
-              ₹{Math.round(stats.avgLifetimeValue).toLocaleString()}
+            <div className="text-xl sm:text-2xl font-bold truncate bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-400 dark:to-indigo-600 bg-clip-text text-transparent tabular-nums">
+              {formatIndianCurrency(Math.round(stats.avgLifetimeValue), { compact: true, showDecimal: false })}
             </div>
             <p className="text-xs text-muted-foreground">
               Per client
@@ -451,15 +459,14 @@ export default function ClientsPage() {
             <>
               <div className="hidden md:block">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       <TableHead className="text-xs sm:text-sm">Client</TableHead>
                       <TableHead className="text-xs sm:text-sm">Contact</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Loyalty</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Properties</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Lifetime Value</TableHead>
-                      <TableHead className="text-xs sm:text-sm">Last Activity</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Tier</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Purchases</TableHead>
+                      <TableHead className="text-xs sm:text-sm">LTV</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Last Contact</TableHead>
                       <TableHead className="text-xs sm:text-sm text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -469,7 +476,7 @@ export default function ClientsPage() {
                   const TierIcon = tierConfig.icon;
                   
                   return (
-                    <TableRow key={client.id}>
+                    <TableRow key={client.id} className="table-row hover:bg-muted/50 group">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
@@ -501,30 +508,18 @@ export default function ClientsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={cn("capitalize", statusConfig[client.status || 'active'].color)}>
-                          {statusConfig[client.status || 'active'].label}
+                        <Badge className={cn("capitalize", tierConfig.color)}>
+                          <TierIcon className="h-3 w-3 mr-1" />
+                          {client.loyalty_tier || 'bronze'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <TierIcon className={cn("h-3 w-3 sm:h-4 sm:w-4", tierConfig.color)} />
-                          <span className="capitalize text-xs sm:text-sm">{client.loyalty_tier || 'bronze'}</span>
+                        <div className="tabular-nums text-sm">
+                          {client.total_purchases || 0}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="text-center">
-                            <div className="font-semibold text-sm">{client.total_purchases || 0}</div>
-                            <div className="text-xs text-muted-foreground">Bought</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-semibold text-sm">{client.total_properties_viewed || 0}</div>
-                            <div className="text-xs text-muted-foreground">Viewed</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-sm truncate">₹{(client.lifetime_value || 0).toLocaleString()}</div>
+                        <div className="font-semibold text-sm truncate tabular-nums">{formatIndianCurrency(client.lifetime_value || 0, { compact: true, showDecimal: false })}</div>
                       </TableCell>
                       <TableCell>
                         {client.last_interaction ? (
@@ -536,6 +531,39 @@ export default function ClientsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => window.location.href = `tel:${client.phone}`}
+                          >
+                            <Phone className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => window.location.href = `mailto:${client.email}`}
+                          >
+                            <Mail className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => navigate(`/clients/${client.id}`)}
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => navigate(`/clients/${client.id}/edit`)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -582,6 +610,7 @@ export default function ClientsPage() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

@@ -52,6 +52,9 @@ const InvoicesPage = lazy(() => import("./pages/Invoices"));
 const CreateInvoicePage = lazy(() => import("./pages/CreateInvoice"));
 const InvoiceDetailsPage = lazy(() => import("./pages/InvoiceDetails"));
 const TestWhatsApp = lazy(() => import("./pages/TestWhatsApp"));
+const ApprovalQueue = lazy(() => import("./pages/ApprovalQueue"));
+const RoleConfiguration = lazy(() => import("./pages/RoleConfiguration"));
+const AdsManagerLayout = lazy(() => import("./pages/AdsManagerLayout"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 
@@ -137,7 +140,8 @@ const App = () => {
                   <Route path="/appointments/new" element={<CreateAppointmentLayout />} />
 
                   <Route path="/analytics" element={<AnalyticsLayout />} />
-                  <Route path="/reports" element={<AnalyticsLayout />} />
+                  <Route path="/ads-manager" element={<AdsManagerLayout />} />
+                  <Route path="/reports" element={<AdsManagerLayout />} />
                   <Route path="/settings" element={<SettingsLayout />} />
                   <Route path="/calendar" element={<CalendarLayout />} />
                   <Route path="/ai-tools" element={<AiToolsLayout />} />
@@ -146,6 +150,8 @@ const App = () => {
                   <Route path="/ai-tools/test-transcription" element={<TestTranscription />} />
                   <Route path="/messages" element={<MessagesLayout />} />
                   <Route path="/test-whatsapp" element={<TestWhatsApp />} />
+                  <Route path="/approval-queue" element={<ApprovalQueue />} />
+                  <Route path="/role-configuration" element={<RoleConfiguration />} />
                   <Route path="/profile" element={<ProfileLayout />} />
                   
                   <Route path="/invoices" element={<InvoicesLayout />}>

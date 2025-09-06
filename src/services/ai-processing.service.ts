@@ -89,7 +89,7 @@ class AIProcessingService {
       const response = await this.openai.chat.completions.create({
         model: options.model || 'gpt-3.5-turbo',  // Use gpt-3.5-turbo which supports JSON mode
         messages: [
-          { role: 'system', content: systemPrompt + '\n\nIMPORTANT: You must respond with valid JSON only.' },
+          { role: 'system', content: systemPrompt + '\n\nIMPORTANT: You must respond with valid JSON only. Do not include any text before or after the JSON.' },
           { role: 'user', content: userPrompt }
         ],
         temperature: options.temperature || 0.3,
@@ -98,7 +98,49 @@ class AIProcessingService {
         // response_format: { type: 'json_object' }
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      let content = response.choices[0].message.content || '{}';
+      
+      // Clean up the response - remove any non-JSON content
+      content = content.trim();
+      // If the response starts with ```json, extract the JSON
+      if (content.startsWith('```json')) {
+        content = content.replace(/```json\s*/, '').replace(/```\s*$/, '');
+      } else if (content.startsWith('```')) {
+        content = content.replace(/```\s*/, '').replace(/```\s*$/, '');
+      }
+      
+      // Try to find JSON object in the content
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        content = jsonMatch[0];
+      }
+      
+      // Fix common JSON issues from GPT
+      // Remove trailing commas before closing braces/brackets
+      content = content.replace(/,\s*}/g, '}');
+      content = content.replace(/,\s*]/g, ']');
+      // Remove any trailing commas in objects
+      content = content.replace(/,(\s*[}\]])/g, '$1');
+      
+      let result;
+      try {
+        result = JSON.parse(content);
+      } catch (parseError) {
+        console.error('Failed to parse AI response after cleanup:', content);
+        console.error('Parse error:', parseError);
+        
+        // Fallback to a default response
+        result = {
+          summary: text.substring(0, 100) + '...',
+          keyPoints: ['Voice note processed'],
+          actionItems: [],
+          sentiment: 'neutral',
+          entities: {},
+          subject: 'Voice Note',
+          category: 'general',
+          urgency: 'medium'
+        };
+      }
       
       return {
         summary: result.summary || '',
@@ -242,19 +284,29 @@ Be concise and professional in your summaries.`;
       const suggestions = await aiDecisionService.analyzeConversation(context);
       console.log(`Generated ${suggestions.length} decision suggestions`);
       
-      // Create decisions in database
-      const decisions = await aiDecisionService.createDecisions(
+      // Process decisions with approval workflow
+      console.log('Processing decisions with approval workflow...');
+      
+      // Initialize services
+      await aiDecisionService.initialize(communication.organization_id);
+      await crmActionsService.initialize(communication.organization_id);
+      
+      // Process decisions with approval system
+      const approvalResult = await aiDecisionService.processDecisionsWithApproval(
         suggestions,
         communicationId,
         communication.organization_id
       );
-
-      // Send decision suggestions via Telegram if bot is configured
-      if (communication.channel_id && decisions.length > 0) {
+      
+      console.log(`Created ${approvalResult.decisions.length} decisions`);
+      console.log(`${approvalResult.approvalRequests.length} require approval`);
+      console.log(`${approvalResult.autoApproved.length} auto-approved`);
+      
+      // Send notification to Telegram about decisions and approvals
+      if (communication.channel_id && approvalResult.decisions.length > 0) {
         // Get bot config from metadata or use default
         let botId = communication.channel_metadata?.bot_id;
         
-        // If no bot ID in metadata, try to get from telegram configs
         if (!botId) {
           const { data: botConfigs } = await supabase
             .from('telegram_bot_configs')
@@ -268,25 +320,50 @@ Be concise and professional in your summaries.`;
         }
         
         if (botId) {
-          console.log(`Sending ${decisions.length} decision suggestions to Telegram chat ${communication.channel_id}`);
-          await telegramService.sendDecisionSuggestions(
+          // Create enhanced message with approval info
+          let message = '📋 <b>Suggested Actions from Voice Note:</b>\n\n';
+          message += `<i>${result.summary}</i>\n\n`;
+          
+          for (const decision of approvalResult.decisions) {
+            const icon = this.getDecisionIcon(decision.decision_type);
+            message += `${icon} <b>${this.getDecisionTitle(decision.decision_type)}</b>\n`;
+            message += `   📊 Confidence: ${Math.round(decision.confidence_score * 100)}%\n`;
+            
+            // Check if this decision needs approval
+            const needsApproval = approvalResult.approvalRequests.some(
+              reqId => decision.parameters?.approval_request_id === reqId
+            );
+            
+            if (needsApproval) {
+              message += `   ⏳ <b>Status:</b> Awaiting approval\n`;
+              message += `   ➡️ Review in CRM Approval Queue\n`;
+            } else if (approvalResult.autoApproved.includes(decision.id)) {
+              message += `   ✅ <b>Status:</b> Auto-approved and executed\n`;
+            } else {
+              message += `   🔍 <b>Status:</b> Processing...\n`;
+            }
+            message += '\n';
+          }
+          
+          if (approvalResult.approvalRequests.length > 0) {
+            message += `\n⚠️ <b>${approvalResult.approvalRequests.length} action(s) require your approval</b>\n`;
+            message += '📱 Open the CRM to review and approve these actions.\n';
+          }
+          
+          if (approvalResult.errors.length > 0) {
+            message += `\n❌ <b>Errors:</b>\n`;
+            approvalResult.errors.forEach(error => {
+              message += `• ${error}\n`;
+            });
+          }
+          
+          // Send the enhanced notification
+          await telegramService.sendMessage(
             botId,
             communication.channel_id,
-            decisions,
-            result.summary
+            message,
+            { parse_mode: 'HTML' }
           );
-        } else {
-          console.log('No bot ID found, skipping Telegram decision suggestions');
-        }
-      }
-
-      // Initialize CRM actions service for auto-approved decisions
-      await crmActionsService.initialize();
-      
-      // Execute auto-approved decisions
-      for (const decision of decisions) {
-        if (decision.status === 'approved') {
-          await crmActionsService.executeDecision(decision);
         }
       }
 
@@ -409,6 +486,44 @@ Be concise and professional in your summaries.`;
     } catch (error) {
       console.error('Error updating job status:', error);
     }
+  }
+
+  /**
+   * Get decision icon for Telegram messages
+   */
+  private getDecisionIcon(decisionType: string): string {
+    const icons: Record<string, string> = {
+      'create_lead': '👤',
+      'update_client': '👥',
+      'schedule_appointment': '📅',
+      'create_task': '📋',
+      'update_property': '🏠',
+      'send_message': '💬',
+      'add_note': '📝',
+      'change_status': '🆙',
+      'assign_agent': '👨‍💼',
+      'update_budget': '💰',
+    };
+    return icons[decisionType] || '🔹';
+  }
+
+  /**
+   * Get decision title for display
+   */
+  private getDecisionTitle(decisionType: string): string {
+    const titles: Record<string, string> = {
+      'create_lead': 'Create New Lead',
+      'update_client': 'Update Client Info',
+      'schedule_appointment': 'Schedule Appointment',
+      'create_task': 'Create Task',
+      'update_property': 'Update Property',
+      'send_message': 'Send Message',
+      'add_note': 'Add Note',
+      'change_status': 'Change Status',
+      'assign_agent': 'Assign Agent',
+      'update_budget': 'Update Budget',
+    };
+    return titles[decisionType] || decisionType;
   }
 
   /**

@@ -9,19 +9,141 @@ import {
   ScheduleAppointmentPayload,
   CreateTaskPayload,
 } from '@/types/voice-crm.types';
+import { approvalService } from './approval.service';
+import {
+  PermissionCheck,
+  CreateApprovalRequestPayload,
+  ApprovalRequest,
+  EntityType,
+  ActionType,
+} from '@/types/approval.types';
 
 class CRMActionsService {
   private executionQueue: CRMAction[] = [];
   private isProcessing = false;
   private processingInterval: number | null = null;
+  private currentUserId: string | null = null;
+  private isInitialized = false;
+  private processedDecisionIds = new Set<string>();
 
   /**
    * Initialize the CRM Actions Service
    */
-  async initialize(): Promise<void> {
+  async initialize(userId?: string): Promise<void> {
+    // Prevent multiple initializations
+    if (this.isInitialized) {
+      console.log('CRM Actions Service already initialized, skipping');
+      return;
+    }
+    
+    // Set current user
+    if (userId) {
+      this.currentUserId = userId;
+    }
+    
+    // Stop any existing processor before starting new one
+    this.stop();
+    
     // Start processing queue
     this.startQueueProcessor();
+    this.isInitialized = true;
     console.log('CRM Actions Service initialized');
+  }
+
+  /**
+   * Set the current user for permission checks
+   */
+  setCurrentUser(userId: string): void {
+    this.currentUserId = userId;
+  }
+
+  /**
+   * Check if a decision requires approval and process accordingly
+   */
+  async processDecisionWithApproval(decision: AIDecision): Promise<{
+    requiresApproval: boolean;
+    approvalRequestId?: string;
+    executionResult?: ExecutionResult;
+  }> {
+    if (!this.currentUserId) {
+      throw new Error('User ID not set. Call setCurrentUser() first.');
+    }
+
+    try {
+      // Check if this action requires approval
+      const permissionCheck: PermissionCheck = {
+        user_id: this.currentUserId,
+        entity_type: this.getEntityType(decision.decision_type) as EntityType,
+        action_type: this.getActionType(decision.decision_type) as ActionType,
+        context: {
+          confidence_score: decision.confidence_score,
+          priority: decision.priority,
+          ...decision.parameters,
+        },
+      };
+
+      const permissionResult = await approvalService.checkPermission(permissionCheck);
+
+      // If there's an error in permission check, default to requiring approval
+      if (permissionResult.reason && !permissionResult.allowed && !permissionResult.requires_approval) {
+        console.log('Permission check failed, defaulting to approval required:', permissionResult.reason);
+        permissionResult.requires_approval = true;
+      }
+
+      if (permissionResult.requires_approval && !permissionResult.auto_approve_eligible) {
+        // Create approval request
+        const approvalPayload: CreateApprovalRequestPayload = {
+          entity_type: this.getEntityType(decision.decision_type) as EntityType,
+          entity_id: decision.parameters.entity_id,
+          action_type: this.getActionType(decision.decision_type) as ActionType,
+          current_data: await this.getCurrentData(decision),
+          proposed_changes: decision.parameters,
+          change_summary: this.generateChangeSummary(decision),
+          request_reason: `AI suggested action with ${Math.round(decision.confidence_score * 100)}% confidence`,
+          priority: decision.priority as any,
+          is_urgent: decision.priority === 'urgent',
+          metadata: {
+            decision_id: decision.id,
+            communication_id: decision.communication_id,
+            confidence_score: decision.confidence_score,
+          },
+        };
+
+        const approvalRequest = await approvalService.createApprovalRequest(
+          approvalPayload,
+          this.currentUserId
+        );
+
+        // Update decision status to pending approval
+        await supabase
+          .from('ai_decisions')
+          .update({
+            status: 'pending',
+            parameters: {
+              ...decision.parameters,
+              approval_request_id: approvalRequest.id,
+            },
+          })
+          .eq('id', decision.id);
+
+        return {
+          requiresApproval: true,
+          approvalRequestId: approvalRequest.id,
+        };
+      } else if (permissionResult.allowed || permissionResult.auto_approve_eligible) {
+        // Execute immediately
+        const result = await this.executeDecision(decision);
+        return {
+          requiresApproval: false,
+          executionResult: result,
+        };
+      } else {
+        throw new Error(permissionResult.reason || 'Permission denied');
+      }
+    } catch (error: any) {
+      console.error('Error processing decision with approval:', error);
+      throw error;
+    }
   }
 
   /**
@@ -29,6 +151,35 @@ class CRMActionsService {
    */
   async executeDecision(decision: AIDecision): Promise<ExecutionResult> {
     try {
+      // Check if we've already processed this decision
+      if (this.processedDecisionIds.has(decision.id)) {
+        console.log(`Decision ${decision.id} already processed, skipping`);
+        return {
+          success: true,
+          message: 'Decision already processed',
+          timestamp: new Date(),
+        };
+      }
+      
+      // Check if an action already exists for this decision
+      const { data: existingAction } = await supabase
+        .from('crm_action_queue')
+        .select('id, status')
+        .eq('decision_id', decision.id)
+        .single();
+      
+      if (existingAction) {
+        console.log(`Action already exists for decision ${decision.id} with status: ${existingAction.status}`);
+        if (existingAction.status === 'completed') {
+          this.processedDecisionIds.add(decision.id);
+          return {
+            success: true,
+            message: 'Action already completed',
+            timestamp: new Date(),
+          };
+        }
+      }
+      
       // Create CRM action from decision
       const action: CRMAction = {
         id: uuidv4(),
@@ -69,6 +220,18 @@ class CRMActionsService {
    * Queue an action for execution
    */
   private async queueAction(action: CRMAction): Promise<void> {
+    // Check if action already exists for this decision
+    const { data: existing } = await supabase
+      .from('crm_action_queue')
+      .select('id')
+      .eq('decision_id', action.decision_id)
+      .single();
+    
+    if (existing) {
+      console.log(`Action already queued for decision ${action.decision_id}`);
+      return;
+    }
+    
     // Save to database queue
     const { error } = await supabase
       .from('crm_action_queue')
@@ -79,11 +242,19 @@ class CRMActionsService {
       });
 
     if (error) {
+      // Check if it's a duplicate key error
+      if (error.message?.includes('duplicate')) {
+        console.log('Action already exists in queue');
+        return;
+      }
       console.error('Error queuing action:', error);
     }
 
-    // Add to memory queue
-    this.executionQueue.push(action);
+    // Add to memory queue only if not already there
+    const inQueue = this.executionQueue.some(a => a.decision_id === action.decision_id);
+    if (!inQueue) {
+      this.executionQueue.push(action);
+    }
   }
 
   /**
@@ -91,6 +262,31 @@ class CRMActionsService {
    */
   private async processAction(action: CRMAction): Promise<ExecutionResult> {
     try {
+      // Check if action is already completed or processing
+      const { data: existingAction } = await supabase
+        .from('crm_action_queue')
+        .select('status')
+        .eq('id', action.id)
+        .single();
+      
+      if (existingAction?.status === 'completed') {
+        console.log(`Action ${action.id} already completed, skipping`);
+        return {
+          success: true,
+          message: 'Action already completed',
+          timestamp: new Date(),
+        };
+      }
+      
+      if (existingAction?.status === 'processing') {
+        console.log(`Action ${action.id} already processing, skipping`);
+        return {
+          success: false,
+          message: 'Action already being processed',
+          timestamp: new Date(),
+        };
+      }
+
       // Update status to processing
       await this.updateActionStatus(action.id, 'processing');
 
@@ -99,9 +295,7 @@ class CRMActionsService {
       // Execute based on decision type
       switch (action.entity_type) {
         case 'lead':
-          result = await this.executeLead
-
-Action(action);
+          result = await this.executeLeadAction(action);
           break;
         case 'client':
           result = await this.executeClientAction(action);
@@ -124,6 +318,9 @@ Action(action);
 
       // Update decision status
       await this.updateDecisionStatus(action.decision_id, 'completed');
+      
+      // Mark decision as processed
+      this.processedDecisionIds.add(action.decision_id);
 
       return result;
     } catch (error: any) {
@@ -159,24 +356,58 @@ Action(action);
    */
   private async executeLeadAction(action: CRMAction): Promise<ExecutionResult> {
     const payload = action.payload as CreateLeadPayload;
+    
+    // Log the received payload for debugging
+    console.log('🔍 CRM Lead Action Payload:', {
+      operation: action.operation,
+      payloadKeys: Object.keys(payload || {}),
+      payload: payload
+    });
 
     switch (action.operation) {
       case 'create':
+        // Check for duplicate lead by phone number if provided
+        if (payload?.phone) {
+          const { data: existingLead } = await supabase
+            .from('leads')
+            .select('id, name, phone')
+            .eq('phone', payload.phone)
+            .single();
+          
+          if (existingLead) {
+            console.log(`Lead with phone ${payload.phone} already exists: ${existingLead.name}`);
+            return {
+              success: true,
+              entity_id: existingLead.id,
+              entity_type: 'lead',
+              message: `Lead already exists: ${existingLead.name}`,
+              data: existingLead,
+              timestamp: new Date(),
+            };
+          }
+        }
+        
+        // Validate and provide defaults for required fields
+        const leadData = {
+          name: payload?.name || 'Unknown Lead',
+          phone: payload?.phone || '',
+          email: payload?.email || '',
+          source: payload?.source || 'voice_crm',
+          interested_in: payload?.interested_in || null,
+          budget_min: payload?.budget_min || 0,
+          budget_max: payload?.budget_max || 0,
+          notes: payload?.notes || '',
+          priority: payload?.priority || 'normal',
+          stage: 'new',
+          created_at: new Date().toISOString(),
+        };
+        
+        // Log what we're about to insert
+        console.log('📥 Inserting lead with data:', leadData);
+        
         const { data: lead, error } = await supabase
           .from('leads')
-          .insert({
-            name: payload.name,
-            phone: payload.phone,
-            email: payload.email,
-            source: payload.source || 'voice_crm',
-            interested_in: payload.interested_in,
-            budget_min: payload.budget_min,
-            budget_max: payload.budget_max,
-            notes: payload.notes,
-            priority: payload.priority || 'normal',
-            stage: 'new',
-            created_at: new Date().toISOString(),
-          })
+          .insert(leadData)
           .select()
           .single();
 
@@ -515,29 +746,36 @@ Action(action);
   private startQueueProcessor(): void {
     // Process queue every 5 seconds
     this.processingInterval = window.setInterval(async () => {
-      if (this.isProcessing || this.executionQueue.length === 0) return;
+      if (this.isProcessing) return;
 
       this.isProcessing = true;
 
       try {
-        // Also check database for queued actions
+        // Check database for queued actions (not processing or completed)
         const { data: queuedActions } = await supabase
           .from('crm_action_queue')
           .select('*')
-          .eq('status', 'queued')
+          .in('status', ['queued', 'failed'])
+          .lt('retry_count', 3)
           .order('created_at', { ascending: true })
           .limit(5);
 
         if (queuedActions && queuedActions.length > 0) {
           for (const action of queuedActions) {
-            await this.processAction(action);
+            // Skip if action is already in memory queue
+            const inMemoryQueue = this.executionQueue.some(a => a.id === action.id);
+            if (!inMemoryQueue) {
+              await this.processAction(action);
+            }
           }
         }
 
         // Process memory queue
+        const processedIds = new Set<string>();
         while (this.executionQueue.length > 0) {
           const action = this.executionQueue.shift();
-          if (action) {
+          if (action && !processedIds.has(action.id)) {
+            processedIds.add(action.id);
             await this.processAction(action);
           }
         }
@@ -557,6 +795,8 @@ Action(action);
       clearInterval(this.processingInterval);
       this.processingInterval = null;
     }
+    this.isInitialized = false;
+    this.isProcessing = false;
   }
 
   /**
@@ -579,6 +819,145 @@ Action(action);
     if (decisionType.startsWith('update')) return 'update';
     if (decisionType.startsWith('delete')) return 'delete';
     return 'create';
+  }
+
+  private getActionType(decisionType: string): ActionType {
+    if (decisionType.startsWith('create')) return 'create';
+    if (decisionType.startsWith('update')) return 'update';
+    if (decisionType.startsWith('delete')) return 'delete';
+    if (decisionType.startsWith('schedule')) return 'create';
+    if (decisionType.includes('status')) return 'status_change';
+    if (decisionType.includes('assign')) return 'assignment';
+    return 'update';
+  }
+
+  private async getCurrentData(decision: AIDecision): Promise<Record<string, any>> {
+    // Fetch current data based on entity type
+    const entityType = this.getEntityType(decision.decision_type);
+    const entityId = decision.parameters.entity_id || decision.parameters.client_id || decision.parameters.lead_id;
+    
+    if (!entityId) return {};
+
+    try {
+      let tableName = '';
+      switch (entityType) {
+        case 'client':
+          tableName = 'clients';
+          break;
+        case 'lead':
+          tableName = 'leads';
+          break;
+        case 'appointment':
+          tableName = 'appointments';
+          break;
+        case 'property':
+          tableName = 'properties';
+          break;
+        default:
+          return {};
+      }
+
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', entityId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching current data:', error);
+        return {};
+      }
+
+      return data || {};
+    } catch (error) {
+      console.error('Error getting current data:', error);
+      return {};
+    }
+  }
+
+  private generateChangeSummary(decision: AIDecision): string {
+    const actionTitles: Record<string, string> = {
+      'create_lead': 'Create new lead',
+      'update_client': 'Update client information',
+      'schedule_appointment': 'Schedule appointment',
+      'create_task': 'Create task',
+      'update_property': 'Update property details',
+      'send_message': 'Send message',
+      'add_note': 'Add note to CRM',
+      'change_status': 'Change status',
+      'assign_agent': 'Assign agent',
+      'update_budget': 'Update budget range',
+    };
+
+    const title = actionTitles[decision.decision_type] || decision.decision_type;
+    const params = decision.parameters;
+    
+    // Add specific details based on decision type
+    let details = '';
+    switch (decision.decision_type) {
+      case 'create_lead':
+        details = params.name ? ` for ${params.name}` : '';
+        break;
+      case 'schedule_appointment':
+        details = params.title ? `: ${params.title}` : '';
+        break;
+      case 'create_task':
+        details = params.title ? `: ${params.title}` : '';
+        break;
+      case 'update_client':
+        const updateCount = Object.keys(params.updates || {}).length;
+        details = ` (${updateCount} field${updateCount !== 1 ? 's' : ''})`;
+        break;
+    }
+
+    return `${title}${details}`;
+  }
+
+  /**
+   * Execute action after approval
+   */
+  async executeApprovedAction(approvalRequestId: string): Promise<ExecutionResult> {
+    try {
+      // Get the approval request details
+      const { data: approvalRequest, error: fetchError } = await supabase
+        .from('approval_requests')
+        .select('*, ai_decisions!decision_id(*)')
+        .eq('id', approvalRequestId)
+        .single();
+
+      if (fetchError || !approvalRequest) {
+        throw new Error('Approval request not found');
+      }
+
+      // Check if the request is approved
+      if (approvalRequest.status !== 'approved') {
+        throw new Error('Approval request is not approved');
+      }
+
+      // Get the associated decision
+      const decision = approvalRequest.ai_decisions;
+      if (!decision) {
+        throw new Error('Associated decision not found');
+      }
+
+      // Use the modified data if provided, otherwise use original parameters
+      const finalParameters = approvalRequest.proposed_changes || decision.parameters;
+      
+      // Execute the decision with final parameters
+      const modifiedDecision: AIDecision = {
+        ...decision,
+        parameters: finalParameters,
+      };
+
+      return await this.executeDecision(modifiedDecision);
+    } catch (error: any) {
+      console.error('Error executing approved action:', error);
+      return {
+        success: false,
+        message: error.message || 'Failed to execute approved action',
+        timestamp: new Date(),
+      };
+    }
   }
 
   /**

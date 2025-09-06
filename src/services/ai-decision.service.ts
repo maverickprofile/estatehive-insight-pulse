@@ -16,6 +16,9 @@ import {
   ActionTemplate,
   AutoApprovalRule,
 } from '@/types/voice-crm.types';
+import { crmActionsService } from './crm-actions.service';
+import { approvalService } from './approval-simple.service';
+import { auditService } from './audit.service';
 
 class AIDecisionService {
   private openai: OpenAI | null = null;
@@ -229,20 +232,63 @@ Based on this information, suggest appropriate CRM actions with high confidence 
     }
 
     // Check for new lead creation
-    const leadKeywords = ['new client', 'interested', 'looking for', 'wants to buy', 'wants to rent'];
+    const leadKeywords = [
+      'new lead', 'create lead', 'create a lead', 'create a new lead',
+      'new client', 'create client', 'add lead', 'add a lead',
+      'interested', 'looking for', 'wants to buy', 'wants to rent'
+    ];
     const hasNewLead = leadKeywords.some(keyword => 
       context.transcription.toLowerCase().includes(keyword)
     );
 
-    if (hasNewLead && !context.client_info && context.entities.people?.length) {
+    if (hasNewLead && !context.client_info) {
+      // Extract name from entities or from the transcription
+      let leadName = context.entities.people?.[0];
+      
+      // If no name in entities, try to extract from context
+      if (!leadName) {
+        const nameMatch = context.transcription.match(
+          /(?:lead for|client named?|lead named?|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i
+        );
+        leadName = nameMatch?.[1] || 'Unknown Lead';
+      }
+
+      // Extract phone number if mentioned
+      const phoneMatch = context.transcription.match(
+        /(?:phone|number|contact)\s*(?:is|:)?\s*([\d\s\-\(\)\+]+)/i
+      );
+      const phone = phoneMatch?.[1]?.replace(/[^\d+]/g, '') || undefined;
+
+      // Extract email if mentioned
+      const emailMatch = context.transcription.match(
+        /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
+      );
+      const email = emailMatch?.[1] || undefined;
+
+      // Extract budget if mentioned
+      let budgetMin, budgetMax;
+      if (context.entities.amounts?.length) {
+        const amounts = context.entities.amounts.map(a => this.parseAmount(a));
+        if (amounts.length === 1) {
+          budgetMax = amounts[0];
+        } else {
+          budgetMin = Math.min(...amounts);
+          budgetMax = Math.max(...amounts);
+        }
+      }
+
       suggestions.push({
         decision_type: 'create_lead',
-        confidence: 0.65,
-        reasoning: 'Voice note mentions new potential client',
+        confidence: 0.8, // Higher confidence when explicitly mentioned
+        reasoning: 'Voice note explicitly mentions creating a new lead',
         parameters: {
-          name: context.entities.people[0],
+          name: leadName,
+          phone,
+          email,
           source: 'voice_note',
           interested_in: this.extractPropertyType(context),
+          budget_min: budgetMin,
+          budget_max: budgetMax,
           priority: context.urgency === 'high' ? 'high' : 'normal',
         },
         requires_approval: true,
@@ -339,6 +385,118 @@ Based on this information, suggest appropriate CRM actions with high confidence 
   }
 
   /**
+   * Process decisions with approval workflow
+   */
+  async processDecisionsWithApproval(
+    suggestions: DecisionSuggestion[],
+    communicationId: string,
+    userId: string
+  ): Promise<{
+    decisions: AIDecision[];
+    approvalRequests: string[];
+    autoApproved: string[];
+    errors: string[];
+  }> {
+    const result = {
+      decisions: [] as AIDecision[],
+      approvalRequests: [] as string[],
+      autoApproved: [] as string[],
+      errors: [] as string[],
+    };
+
+    // Set the current user for CRM actions
+    crmActionsService.setCurrentUser(userId);
+
+    for (const suggestion of suggestions) {
+      try {
+        // Create the AI decision
+        const decision: AIDecision = {
+          id: uuidv4(),
+          communication_id: communicationId,
+          decision_type: suggestion.decision_type,
+          action_type: this.getActionType(suggestion.decision_type),
+          confidence_score: suggestion.confidence,
+          priority: this.calculatePriority(suggestion),
+          status: 'pending',
+          parameters: suggestion.parameters,
+          suggested_at: new Date(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        };
+
+        // Save decision to database
+        await this.saveDecisions([decision]);
+        result.decisions.push(decision);
+
+        // Process with approval workflow
+        const approvalResult = await crmActionsService.processDecisionWithApproval(decision);
+        
+        if (approvalResult.requiresApproval) {
+          result.approvalRequests.push(approvalResult.approvalRequestId!);
+          
+          // Log audit trail
+          await auditService.logAuditTrail({
+            organization_id: userId,
+            action_type: 'decision_pending_approval',
+            action_category: 'approval',
+            entity_type: this.getEntityTypeFromDecision(decision.decision_type),
+            user_id: userId,
+            operation: 'create',
+            after_data: {
+              decision_id: decision.id,
+              approval_request_id: approvalResult.approvalRequestId,
+              decision_type: decision.decision_type,
+              confidence: decision.confidence_score,
+            },
+            success: true,
+          });
+        } else if (approvalResult.executionResult?.success) {
+          result.autoApproved.push(decision.id);
+          
+          // Log auto-approval
+          await auditService.logAuditTrail({
+            organization_id: userId,
+            action_type: 'decision_auto_approved',
+            action_category: 'approval',
+            entity_type: this.getEntityTypeFromDecision(decision.decision_type),
+            user_id: userId,
+            operation: 'approve',
+            after_data: {
+              decision_id: decision.id,
+              decision_type: decision.decision_type,
+              confidence: decision.confidence_score,
+            },
+            success: true,
+          });
+        }
+      } catch (error: any) {
+        console.error('Error processing decision:', error);
+        result.errors.push(error.message || 'Failed to process decision');
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get entity type from decision type
+   */
+  private getEntityTypeFromDecision(decisionType: DecisionType): any {
+    const mapping: Record<string, string> = {
+      'create_lead': 'lead',
+      'update_client': 'client',
+      'schedule_appointment': 'appointment',
+      'create_task': 'task',
+      'update_property': 'property',
+      'add_note': 'communication',
+      'send_message': 'communication',
+      'change_status': 'client',
+      'assign_agent': 'client',
+      'update_budget': 'client',
+    };
+    return mapping[decisionType] || 'client';
+  }
+
+  /**
    * Check if decision can be auto-approved
    */
   private async canAutoApprove(decision: AIDecision, organizationId?: string): Promise<boolean> {
@@ -386,15 +544,34 @@ Based on this information, suggest appropriate CRM actions with high confidence 
    */
   private async saveDecisions(decisions: AIDecision[]): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('ai_decisions')
-        .insert(decisions.map(d => ({
-          ...d,
+      // Only include columns that exist in the database
+      const decisionsToSave = decisions.map(d => {
+        const baseDecision: any = {
+          id: d.id,
+          communication_id: d.communication_id,
+          decision_type: d.decision_type,
+          confidence_score: d.confidence_score,
+          status: d.status,
+          parameters: d.parameters,
           suggested_at: d.suggested_at.toISOString(),
+        };
+        
+        // Store additional data in parameters/metadata
+        baseDecision.parameters = {
+          ...d.parameters,
+          action_type: d.action_type,
+          priority: d.priority,
           expires_at: d.expires_at?.toISOString(),
           approved_at: d.approved_at?.toISOString(),
           executed_at: d.executed_at?.toISOString(),
-        })));
+        };
+        
+        return baseDecision;
+      });
+
+      const { error } = await supabase
+        .from('ai_decisions')
+        .insert(decisionsToSave);
 
       if (error) throw error;
     } catch (error) {

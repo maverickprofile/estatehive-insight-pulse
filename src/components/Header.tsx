@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, Search, User, Settings, LogOut, Menu, CheckCheck, X } from "lucide-react";
+import { Bell, Search, User, Settings, LogOut, Menu, CheckCheck, X, Command } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -35,11 +35,26 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const [profile, setProfile] = useState<{ full_name: string; role: string; avatar_url: string | null } | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Global search keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('global-search') as HTMLInputElement;
+        searchInput?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const fetchUserAndProfile = async () => {
@@ -140,25 +155,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </Button>
       </div>
 
-      {/* Search */}
+      {/* Search with unified placeholder and Cmd/Ctrl+K support */}
       <div className="flex-1 max-w-md ml-2 md:ml-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-2 bg-background border border-input rounded-lg text-sm"/>
+          <input 
+            id="global-search"
+            type="text" 
+            placeholder="Search properties, leads, clients..." 
+            className="w-full pl-10 pr-24 py-2 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 transition-all"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </div>
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 md:gap-4">
         <ThemeToggle />
-        {/* Notifications */}
+        {/* Notifications with improved spacing */}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative focus-ring">
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-destructive-foreground text-xs">
-                            {unreadCount}
+                        <Badge 
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-destructive-foreground text-xs"
+                          style={{ marginTop: '4px', marginRight: '4px' }}
+                        >
+                            {unreadCount > 9 ? '9+' : unreadCount}
                         </Badge>
                     )}
                 </Button>
@@ -201,14 +231,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* User Menu */}
+        {/* User Menu with improved avatar size and focus ring */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 px-1 md:px-3">
-              <Avatar className="h-8 w-8">
+            <Button 
+              variant="ghost" 
+              className="flex items-center gap-2 px-1 md:px-3 focus-ring" 
+              style={{ minHeight: 'var(--hit-target-min)', minWidth: 'var(--hit-target-min)' }}
+            >
+              <Avatar className="h-10 w-10 border-2 border-border">
                 <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User avatar'} />
-                <AvatarFallback>
-                  {profile ? profile.full_name.split(' ').map(n => n[0]).join('') : <User className="h-4 w-4" />}
+                <AvatarFallback className="bg-primary/10">
+                  {profile ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : <User className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
               <div className="text-left hidden md:block">
