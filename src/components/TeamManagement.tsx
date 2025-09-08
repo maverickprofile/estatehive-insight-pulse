@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
+import './team-management.css';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -103,22 +104,38 @@ export default function TeamManagement() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // First fetch the profile
         const { data: profile } = await supabase
           .from('profiles')
-          .select('*, team_members!inner(organization_id, role)')
+          .select('*')
           .eq('id', user.id)
           .single();
         
-        setCurrentUser(profile);
+        // Then fetch the team member data separately
+        const { data: teamMember } = await supabase
+          .from('team_members')
+          .select('organization_id, role')
+          .eq('user_id', user.id)
+          .single();
         
-        // Fetch organization
-        if (profile?.team_members?.[0]?.organization_id) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', profile.team_members[0].organization_id)
-            .single();
-          setOrganization(org);
+        if (profile && teamMember) {
+          const fullProfile = {
+            ...profile,
+            team_members: [teamMember]
+          };
+          setCurrentUser(fullProfile);
+          
+          // Fetch organization
+          if (teamMember.organization_id) {
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('*')
+              .eq('id', teamMember.organization_id)
+              .single();
+            setOrganization(org);
+          }
+        } else {
+          setCurrentUser(profile);
         }
       }
     } catch (error) {
@@ -142,23 +159,32 @@ export default function TeamManagement() {
 
       if (!memberData?.organization_id) return;
 
-      // Fetch team members
+      // Fetch team members with their profiles
       const { data: members, error: membersError } = await supabase
         .from('team_members')
-        .select(`
-          *,
-          profiles:user_id (
-            email,
-            full_name,
-            avatar_url,
-            phone
-          )
-        `)
+        .select('*')
         .eq('organization_id', memberData.organization_id)
         .eq('is_active', true);
 
       if (membersError) throw membersError;
-      setTeamMembers(members || []);
+      
+      // Fetch profiles for each team member
+      const membersWithProfiles = await Promise.all(
+        (members || []).map(async (member) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, full_name, avatar_url, phone')
+            .eq('id', member.user_id)
+            .single();
+          
+          return {
+            ...member,
+            profiles: profile
+          };
+        })
+      );
+
+      setTeamMembers(membersWithProfiles);
 
       // Fetch pending invitations
       const { data: invites, error: invitesError } = await supabase
@@ -338,15 +364,15 @@ export default function TeamManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6" />
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Users className="h-5 w-5 sm:h-6 sm:w-6" />
             Team Management
           </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {organization?.name || 'Your Organization'} • {teamMembers.length} Members
           </p>
         </div>
@@ -354,9 +380,10 @@ export default function TeamManagement() {
         {canManageTeam && (
           <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <UserPlus className="mr-2 h-4 w-4" />
-                Invite Member
+                <span className="hidden sm:inline">Invite Member</span>
+                <span className="sm:hidden">Invite</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
@@ -436,42 +463,51 @@ export default function TeamManagement() {
       {/* Team Members Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Active Team Members</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Active Team Members</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">
             Manage your organization's team members and their roles
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="px-0 sm:px-6">
+          <div className="overflow-x-auto team-table-wrapper">
+            <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Status</TableHead>
-                {canManageTeam && <TableHead>Actions</TableHead>}
+                <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Email</TableHead>
+                <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                <TableHead className="text-xs sm:text-sm hidden md:table-cell">Joined</TableHead>
+                <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                {canManageTeam && <TableHead className="text-xs sm:text-sm">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {teamMembers.map((member) => (
                 <TableRow key={member.id}>
-                  <TableCell className="font-medium">
-                    {member.profiles?.full_name || 'Unknown'}
+                  <TableCell className="font-medium text-xs sm:text-sm">
+                    <div>
+                      <div>{member.profiles?.full_name || 'Unknown'}</div>
+                      <div className="text-xs text-muted-foreground sm:hidden">
+                        {member.profiles?.email}
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell>{member.profiles?.email}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                    {member.profiles?.email}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant={getRoleBadgeVariant(member.role)}>
+                    <Badge variant={getRoleBadgeVariant(member.role)} className="text-xs team-badge">
                       {member.role.replace('_', ' ').toUpperCase()}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                     {new Date(member.joined_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="text-green-600">
+                    <Badge variant="outline" className="text-green-600 text-xs team-badge">
                       <CheckCircle className="mr-1 h-3 w-3" />
-                      Active
+                      <span className="hidden sm:inline">Active</span>
+                      <span className="sm:hidden">On</span>
                     </Badge>
                   </TableCell>
                   {canManageTeam && (
@@ -479,6 +515,7 @@ export default function TeamManagement() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="team-action-btn"
                         onClick={() => removeMember(member.id)}
                         disabled={member.role === 'super_admin'}
                       >
@@ -490,6 +527,7 @@ export default function TeamManagement() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -497,33 +535,43 @@ export default function TeamManagement() {
       {invitations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Pending Invitations</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Invitations that haven't been accepted yet
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Table>
+          <CardContent className="px-0 sm:px-6">
+            <div className="overflow-x-auto team-table-wrapper">
+              <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Invited By</TableHead>
-                  <TableHead>Expires</TableHead>
-                  {canManageTeam && <TableHead>Actions</TableHead>}
+                  <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                  <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Invited By</TableHead>
+                  <TableHead className="text-xs sm:text-sm hidden md:table-cell">Expires</TableHead>
+                  {canManageTeam && <TableHead className="text-xs sm:text-sm">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invitations.map((invitation) => (
                   <TableRow key={invitation.id}>
-                    <TableCell>{invitation.email}</TableCell>
+                    <TableCell className="text-xs sm:text-sm">
+                      <div>
+                        <div>{invitation.email}</div>
+                        <div className="text-xs text-muted-foreground sm:hidden">
+                          by {invitation.invited_by_name}
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="text-xs team-badge">
                         {invitation.role.toUpperCase()}
                       </Badge>
                     </TableCell>
-                    <TableCell>{invitation.invited_by_name}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
+                      {invitation.invited_by_name}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-xs sm:text-sm">
                       {new Date(invitation.expires_at).toLocaleDateString()}
                     </TableCell>
                     {canManageTeam && (
@@ -532,6 +580,7 @@ export default function TeamManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="team-action-btn"
                             onClick={() => {
                               const inviteLink = `${window.location.origin}/#/auth?invite=${invitation.token}`;
                               navigator.clipboard.writeText(inviteLink);
@@ -546,6 +595,7 @@ export default function TeamManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="team-action-btn"
                             onClick={() => cancelInvitation(invitation.id)}
                           >
                             <XCircle className="h-4 w-4" />
@@ -557,6 +607,7 @@ export default function TeamManagement() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

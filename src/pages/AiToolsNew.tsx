@@ -14,10 +14,12 @@ import {
   ArrowRight,
   Shield,
   Lock,
-  CheckCircle
+  CheckCircle,
+  Check
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import "./ai-tools-cards.css";
 
 // AI Tools Data - Original 3 tools
 const aiTools = [
@@ -36,7 +38,7 @@ const aiTools = [
       'Multi-channel integrations',
       'Visual workflow builder'
     ],
-    link: '/ai-tools/whatsapp-qai',
+    link: null, // Disabled for now - no workflows created yet
     configDetails: {
       info: "Create powerful automation workflows with our visual builder. Connect multiple services and automate repetitive tasks.",
       apiKeyRequired: true,
@@ -107,7 +109,11 @@ export default function AiToolsNew() {
 
   const handleToolClick = (tool: typeof aiTools[0]) => {
     if (tool.id === 'whatsappAI') {
-      navigate('/ai-tools/whatsapp-qai');
+      // Disabled for now - no workflows created yet
+      toast({
+        title: "Coming Soon",
+        description: "Automation workflows are currently under development. Check back soon!"
+      });
     } else if (tool.id === 'voiceToCRM') {
       navigate('/ai-tools/voice-to-crm');
     } else if (tool.status === 'active' || tool.status === 'beta') {
@@ -126,7 +132,7 @@ export default function AiToolsNew() {
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl md:text-4xl font-bold text-black dark:text-white">
                 AI Tools
               </h1>
               <p className="text-muted-foreground mt-2">
@@ -146,95 +152,111 @@ export default function AiToolsNew() {
           </div>
         </div>
 
-        {/* AI Tools Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* AI Tools Grid - Responsive with better mobile stacking */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {aiTools.map((tool) => (
-            <Card
+            <div
               key={tool.id}
               className={cn(
-                "relative border-0 overflow-hidden cursor-pointer transition-all duration-300",
-                "hover:shadow-2xl hover:scale-[1.02]",
-                tool.status !== 'coming' && "hover:ring-2 hover:ring-primary/50"
+                "ai-tool-card",
+                tool.id === 'whatsappAI' && "tool-whatsapp",
+                tool.id === 'voiceToCRM' && "tool-voice",
+                tool.id === 'nlpSummarizer' && "tool-nlp"
               )}
-              onMouseEnter={() => setHoveredCard(tool.id)}
-              onMouseLeave={() => setHoveredCard(null)}
               onClick={() => handleToolClick(tool)}
             >
-              {/* Background Gradient */}
-              <div className={cn(
-                "absolute inset-0 bg-gradient-to-br opacity-5",
-                tool.bgColor
-              )} />
-              
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-3 rounded-xl bg-gradient-to-br text-white",
-                      tool.color
-                    )}>
-                      <tool.icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{tool.title}</h3>
-                      <Badge 
-                        variant={tool.status === 'active' ? 'default' : tool.status === 'beta' ? 'secondary' : 'outline'}
-                        className="mt-1"
-                      >
-                        {tool.statusLabel}
-                      </Badge>
-                    </div>
-                  </div>
-                  {tool.status !== 'coming' ? (
-                    <ArrowRight className={cn(
-                      "h-5 w-5 transition-transform",
-                      hoveredCard === tool.id && "translate-x-1"
-                    )} />
-                  ) : (
-                    <Lock className="h-5 w-5 text-muted-foreground" />
-                  )}
+              {/* Header */}
+              <div className="ai-tool-header">
+                <div className={cn(
+                  "ai-tool-icon-wrapper",
+                  tool.id === 'whatsappAI' && "bg-green-100 dark:bg-green-900/30",
+                  tool.id === 'voiceToCRM' && "bg-purple-100 dark:bg-purple-900/30",
+                  tool.id === 'nlpSummarizer' && "bg-blue-100 dark:bg-blue-900/30"
+                )}>
+                  <tool.icon className={cn(
+                    "h-5 w-5",
+                    tool.id === 'whatsappAI' && "text-green-600 dark:text-green-400",
+                    tool.id === 'voiceToCRM' && "text-purple-600 dark:text-purple-400",
+                    tool.id === 'nlpSummarizer' && "text-blue-600 dark:text-blue-400"
+                  )} />
                 </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {tool.description}
-                </p>
-                
+                <span className={cn(
+                  "ai-tool-badge",
+                  tool.status === 'active' && "status-active",
+                  tool.status === 'coming' && "status-coming",
+                  tool.status === 'beta' && "status-beta"
+                )}>
+                  {tool.statusLabel}
+                </span>
+              </div>
+
+              {/* Content Wrapper */}
+              <div className="ai-tool-content">
+                <h3 className="ai-tool-title">{tool.title}</h3>
+                <p className="ai-tool-description">{tool.description}</p>
+
                 {/* Features */}
-                <div className="space-y-2">
-                  {tool.features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">{feature}</span>
+                <div className="ai-tool-features">
+                  {tool.features.slice(0, 2).map((feature, idx) => (
+                    <div key={idx} className="ai-tool-feature">
+                      <Check className="ai-tool-feature-icon" />
+                      <span>{feature}</span>
                     </div>
                   ))}
                 </div>
-                
-                {/* Progress Bar */}
-                <div className="pt-2">
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <span className="text-muted-foreground">
-                      {tool.status === 'active' ? 'Ready to use' : 
-                       tool.status === 'beta' ? 'Beta testing' : 'Development'}
-                    </span>
-                    <span className="font-medium">{tool.progress}%</span>
+
+                {/* Progress */}
+                <div className="ai-tool-progress">
+                  <div className="ai-tool-progress-bar">
+                    <div 
+                      className={cn(
+                        "ai-tool-progress-fill",
+                        tool.id === 'whatsappAI' && "bg-green-500",
+                        tool.id === 'voiceToCRM' && "bg-purple-500",
+                        tool.id === 'nlpSummarizer' && "bg-blue-500"
+                      )}
+                      style={{ width: `${tool.progress}%` }}
+                    />
                   </div>
-                  <Progress value={tool.progress} className="h-2" />
+                  <div className="ai-tool-progress-text">
+                    <span>{tool.progress}% Complete</span>
+                    {tool.status === 'active' && <span className="text-green-600">Active</span>}
+                    {tool.status === 'coming' && <span className="text-amber-600">Coming Soon</span>}
+                    {tool.status === 'beta' && <span className="text-blue-600">Beta</span>}
+                  </div>
                 </div>
-                
-                {/* Action Button */}
-                {tool.status !== 'coming' && (
-                  <Button 
-                    className="w-full mt-2"
-                    variant={tool.status === 'active' ? 'default' : 'secondary'}
-                  >
-                    {tool.status === 'active' ? 'Open Tool' : 'Try Beta'}
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+              </div>
+
+              {/* Action Button - Always at bottom */}
+              <div className="ai-tool-action">
+                <button 
+                  className={cn(
+                    "ai-tool-btn",
+                    tool.status === 'active' && "ai-tool-btn-active"
+                  )}
+                  disabled={tool.status === 'coming'}
+                >
+                {tool.status === 'active' && (
+                  <>
+                    <ArrowRight className="h-4 w-4" />
+                    Open Tool
+                  </>
                 )}
-              </CardContent>
-            </Card>
+                {tool.status === 'coming' && (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    Coming Soon
+                  </>
+                )}
+                {tool.status === 'beta' && (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Try Beta
+                  </>
+                )}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
 

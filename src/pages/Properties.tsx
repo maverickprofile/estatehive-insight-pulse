@@ -219,7 +219,7 @@ export default function PropertiesPage() {
 
   const formatPrice = (price: number | null) => {
     if (!price) return "Price on Request";
-    return formatIndianCurrency(price, { compact: true, showDecimal: false });
+    return formatIndianCurrency(price, { compact: true, showDecimal: true });
   };
 
   const filteredProperties = properties.filter(property => {
@@ -241,63 +241,62 @@ export default function PropertiesPage() {
 
   return (
     <div className="w-full h-full overflow-x-hidden overflow-y-auto">
-      <div className="p-4 space-y-4 max-w-[1600px] mx-auto">
-        {/* Header - Professional Design */}
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 max-w-[1600px] mx-auto">
         <div className="relative">
+          {/* Header - Professional Design */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 rounded-lg" />
-          <div className="relative p-6 rounded-lg bg-background/80 backdrop-blur-sm border-0 shadow-sm">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Building className="h-5 w-5 text-primary" />
+          <div className="relative p-4 sm:p-5 lg:p-6 rounded-lg bg-background/80 backdrop-blur-sm border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                    <Building className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                       Property Portfolio
                     </h1>
-                    <p className="text-sm text-muted-foreground">
-                      {stats.total} properties • {stats.active} active listings • {formatPrice(stats.totalValue)} portfolio value
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                      <span className="inline sm:hidden">{stats.total} props • {stats.active} active</span>
+                      <span className="hidden sm:inline">{stats.total} properties • {stats.active} active listings • {formatPrice(stats.totalValue)} portfolio</span>
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <Button 
                   onClick={() => navigate("/properties/add")}
-                  className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200"
-                  size="default"
+                  className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200 flex-1 sm:flex-none"
+                  size="sm"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add New Property
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="text-xs sm:text-sm">Add Property</span>
                 </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Statistics Dashboard - Professional Design */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
+          {/* Statistics Dashboard - Mobile Responsive */}
           {/* Total Properties */}
           <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent" />
-            <CardContent className="p-6 relative">
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform">
-                  <Building className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-foreground mb-1">{stats.total}</div>
-                  <div className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                    Total Properties
+            <CardContent className="p-3 sm:p-4 lg:p-6 relative">
+              <div className="flex flex-col gap-2 sm:gap-3">
+                <div className="flex items-start justify-between">
+                  <div className="p-2 sm:p-2.5 lg:p-3 rounded-lg sm:rounded-xl bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform">
+                    <Building className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg sm:text-xl lg:text-2xl font-bold text-foreground">{stats.total}</div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Portfolio Size</span>
-                <div className="flex items-center gap-1 text-green-600">
-                  <TrendingUp className="h-3 w-3" />
-                  <span className="text-xs font-medium">Active</span>
+                <div>
+                  <div className="text-[10px] sm:text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    Total
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Portfolio</div>
                 </div>
               </div>
             </CardContent>
@@ -306,7 +305,7 @@ export default function PropertiesPage() {
           {/* Active Listings */}
           <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent" />
-            <CardContent className="p-6 relative">
+            <CardContent className="p-3 sm:p-4 lg:p-6 relative">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 rounded-xl bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform">
                   <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -330,7 +329,7 @@ export default function PropertiesPage() {
           {/* Sales Performance */}
           <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-orange-500/5 to-transparent" />
-            <CardContent className="p-6 relative">
+            <CardContent className="p-3 sm:p-4 lg:p-6 relative">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 rounded-xl bg-orange-100 dark:bg-orange-900/30 group-hover:scale-110 transition-transform">
                   <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -354,7 +353,7 @@ export default function PropertiesPage() {
           {/* Portfolio Value */}
           <Card className="relative overflow-hidden border-0 shadow-sm hover:shadow-md transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent" />
-            <CardContent className="p-6 relative">
+            <CardContent className="p-3 sm:p-4 lg:p-6 relative">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform">
                   <IndianRupee className="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -377,30 +376,31 @@ export default function PropertiesPage() {
           </Card>
         </div>
 
-        {/* Advanced Search & Filters - Professional Design */}
         <Card className="border-0 shadow-sm">
-          <CardContent className="p-6">
+          {/* Advanced Search & Filters - Mobile Optimized */}
+          <CardContent className="p-3 sm:p-4 lg:p-6">
             <div className="space-y-6">
               {/* Search Header */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold">Find Properties</h3>
-                  <p className="text-sm text-muted-foreground">Search and filter your property portfolio</p>
+                  <h3 className="text-base sm:text-lg font-semibold">Find Properties</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Search and filter your portfolio</p>
                 </div>
               </div>
 
-              {/* Search Bar with result count */}
+              {/* Search Bar with result count - Mobile Optimized */}
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search properties by title, location, features, or price range..."
+                  placeholder="Search properties..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 pr-32 h-12 text-sm border-muted-foreground/20 focus:border-primary/50 bg-muted/20"
+                  className="pl-9 sm:pl-12 pr-16 sm:pr-32 h-9 sm:h-10 lg:h-12 text-xs sm:text-sm border-muted-foreground/20 focus:border-primary/50 bg-muted/20"
                 />
                 {/* Results count inside search bar */}
-                <div className="absolute right-12 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  <span className="tabular-nums">{filteredProperties.length}</span> results
+                <div className="absolute right-8 sm:right-12 top-1/2 -translate-y-1/2 text-xs sm:text-sm text-muted-foreground">
+                  <span className="tabular-nums">{filteredProperties.length}</span>
+                  <span className="hidden sm:inline"> results</span>
                 </div>
                 {searchTerm && (
                   <Button
@@ -671,7 +671,7 @@ export default function PropertiesPage() {
 
         {/* Properties Gallery - Professional Design */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {[...Array(8)].map((_, i) => (
               <Card key={i} className="border-0 shadow-sm">
                 <Skeleton className="h-64 w-full rounded-t-lg" />
@@ -705,7 +705,7 @@ export default function PropertiesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {filteredProperties.map((property) => {
               const statusConfig = getStatusConfig(property.status);
               const categoryConfig = getCategoryConfig(property.category);

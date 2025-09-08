@@ -1,0 +1,338 @@
+/* Modern Property Cards - Full Image with Overlay */
+.property-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  height: 400px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.property-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Image Container - Full card coverage */
+.property-image-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.property-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.property-card:hover .property-image {
+  transform: scale(1.05);
+}
+
+/* Strong Gradient Overlay from bottom to top */
+.property-image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.7) 30%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* Top Badge */
+.property-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 10;
+}
+
+.property-badge.sale {
+  background: rgba(34, 197, 94, 0.95);
+  color: white;
+}
+
+.property-badge.rent {
+  background: rgba(59, 130, 246, 0.95);
+  color: white;
+}
+
+/* Price Tag */
+.property-price-tag {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 10px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Content Section - Overlaid on image */
+.property-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  z-index: 2;
+  color: white;
+}
+
+/* Title and Location */
+.property-header {
+  margin-bottom: 12px;
+}
+
+.property-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.property-subtitle {
+  display: none;
+}
+
+.property-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.property-location-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Features Grid */
+.property-features {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.property-feature {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.property-feature-icon {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.property-feature-value {
+  font-weight: 700;
+  color: white;
+}
+
+/* Bottom Action - Prominent Button */
+.property-action {
+  margin-top: 12px;
+}
+
+.property-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.property-button:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: white;
+  color: #111827;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.property-button-icon {
+  width: 16px;
+  height: 16px;
+  transition: all 0.3s ease;
+}
+
+.property-button:hover .property-button-icon {
+  transform: translateX(4px);
+}
+
+/* Agent Info - Hidden to save space */
+.property-agent {
+  display: none;
+}
+
+.property-agent-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.property-agent-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.property-agent-name {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.property-agent-label {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Status Indicator */
+.property-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #10b981;
+}
+
+.property-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Light Mode Adjustments */
+:not(.dark) .property-card {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+:not(.dark) .property-card:hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Content stays white on overlay in both modes */
+
+:not(.dark) .property-agent-name {
+  color: #4b5563;
+}
+
+:not(.dark) .property-agent-label {
+  color: #9ca3af;
+}
+
+:not(.dark) .property-status {
+  color: #10b981;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .property-card {
+    height: 360px;
+  }
+
+  .property-content {
+    padding: 16px;
+  }
+
+  .property-title {
+    font-size: 18px;
+  }
+
+  .property-features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* No Image Fallback */
+.property-no-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.property-no-image-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.property-no-image-text {
+  font-size: 16px;
+  opacity: 0.7;
+}

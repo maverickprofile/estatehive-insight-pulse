@@ -1,0 +1,215 @@
+/* Professional Tab Design */
+.custom-tabs-container {
+  @apply w-full;
+  margin-top: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.custom-tabs-list {
+  @apply flex items-center gap-4 p-0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  position: relative;
+  overflow: visible;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+
+.dark .custom-tabs-list {
+  background: transparent;
+  border-bottom: 2px solid #374151;
+}
+
+.custom-tab-trigger {
+  @apply relative flex items-center justify-center gap-2.5 px-8 py-4 font-medium text-sm transition-all duration-300;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  z-index: 10;
+  position: relative;
+  overflow: hidden;
+  min-width: 140px;
+  height: 48px;
+}
+
+.custom-tab-trigger:hover {
+  color: #374151;
+}
+
+.dark .custom-tab-trigger {
+  color: #9ca3af;
+}
+
+.dark .custom-tab-trigger:hover {
+  color: #d1d5db;
+}
+
+/* Active Tab Styles */
+.custom-tab-trigger[data-state="active"] {
+  color: #000000;
+  font-weight: 600;
+  background: transparent;
+  border-bottom: 3px solid #8b5cf6;
+  margin-bottom: -2px;
+}
+
+.dark .custom-tab-trigger[data-state="active"] {
+  color: #ffffff;
+  background: transparent;
+  border-bottom: 3px solid #8b5cf6;
+}
+
+/* Icon Styles */
+.custom-tab-icon {
+  @apply transition-all duration-300;
+  width: 20px;
+  height: 20px;
+}
+
+.custom-tab-trigger:hover .custom-tab-icon {
+  transform: scale(1.1);
+}
+
+.custom-tab-trigger[data-state="active"] .custom-tab-icon {
+  transform: scale(1.1);
+}
+
+/* Platform-specific colors for active state */
+.custom-tab-trigger[data-value="all"][data-state="active"] .custom-tab-icon {
+  color: #8b5cf6;
+}
+
+/* All logos keep their original colors - no opacity changes */
+.custom-tab-trigger svg {
+  opacity: 1;
+}
+
+.custom-tab-trigger:hover svg {
+  transform: scale(1.1);
+}
+
+.custom-tab-trigger[data-state="active"] svg {
+  transform: scale(1.1);
+}
+
+.custom-tab-trigger[data-value="instagram"][data-state="active"] .custom-tab-icon {
+  color: #e4405f;
+}
+
+.custom-tab-trigger[data-value="youtube"][data-state="active"] .custom-tab-icon {
+  color: #ff0000;
+}
+
+.custom-tab-trigger[data-value="linkedin"][data-state="active"] .custom-tab-icon {
+  color: #0077b5;
+}
+
+/* Remove sliding indicator - using border bottom instead */
+
+/* Ripple effect on click */
+@keyframes ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(4);
+    opacity: 0;
+  }
+}
+
+.custom-tab-trigger::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.2), transparent);
+  animation: none;
+}
+
+.custom-tab-trigger:active::before {
+  animation: ripple 0.6s ease-out;
+}
+
+/* Tab content animation */
+.custom-tab-content {
+  @apply mt-6;
+  animation: fadeSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .custom-tabs-list {
+    @apply gap-2;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  
+  .custom-tabs-list::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .custom-tab-trigger {
+    @apply px-6 py-3 text-sm;
+    min-width: 110px;
+    height: 44px;
+    white-space: nowrap;
+  }
+  
+  .custom-tab-trigger span {
+    @apply inline;
+    font-size: 12px;
+  }
+  
+  .custom-tab-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Enhanced hover states */
+.custom-tab-trigger {
+  position: relative;
+  isolation: isolate;
+}
+
+.custom-tab-trigger:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+/* Badge animation for coming features */
+.tab-badge {
+  @apply ml-2 px-2 py-0.5 text-xs rounded-full font-medium;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(0.95);
+  }
+}

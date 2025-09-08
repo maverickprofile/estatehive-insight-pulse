@@ -22,6 +22,9 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,7 +32,10 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { MapPin } from "lucide-react";
+import { MapPin, Bed, Bath, Square } from "lucide-react";
+import "./dashboard-stats.css";
+import "./property-cards.css";
+import "./property-carousel.css";
 // Lazy load SalesChart component
 const SalesChart = lazy(() => import("./SalesChart"));
 
@@ -146,20 +152,42 @@ interface KpiCardProps {
   title: string;
   value: string;
   icon: LucideIcon;
+  change?: number;
+  period?: string;
+  cardType?: 'properties' | 'leads' | 'revenue' | 'active';
 }
 
-// Memoized KpiCard component with tabular numbers for consistency
-const KpiCard = React.memo(function KpiCard({ title, value, icon: Icon }: KpiCardProps) {
+// Modern KpiCard component matching Ads Manager design
+const KpiCard = React.memo(function KpiCard({ 
+  title, 
+  value, 
+  icon: Icon, 
+  change = 0, 
+  period = "vs last month",
+  cardType = 'properties'
+}: KpiCardProps) {
+  const isPositive = change > 0;
+  const isNegative = change < 0;
+  const changeIcon = isPositive ? ArrowUpRight : isNegative ? ArrowDownRight : Minus;
+  const changeColor = isPositive ? 'stats-change-positive' : isNegative ? 'stats-change-negative' : 'stats-change-neutral';
+  
   return (
-    <div className="metric-card p-3 sm:p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
-          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl md:text-3xl font-bold truncate tabular-nums">{value}</p>
+    <div className={cn("stats-card", `stats-card-${cardType}`)}>
+      <div className="stats-header">
+        <div>
+          <p className="stats-label">{title}</p>
+          <p className="stats-value">{value}</p>
         </div>
-        <div className="p-2 sm:p-3 rounded-lg bg-primary/10 flex-shrink-0">
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+        <div className="stats-icon-wrapper">
+          <Icon className="stats-icon" />
         </div>
+      </div>
+      <div className="stats-footer">
+        <div className={cn("stats-change", changeColor)}>
+          {React.createElement(changeIcon, { className: "h-4 w-4" })}
+          <span>{Math.abs(change)}%</span>
+        </div>
+        <span className="stats-period">{period}</span>
       </div>
     </div>
   );
@@ -263,7 +291,7 @@ const AgentItem = React.memo(function AgentItem({
   );
 });
 
-// Property slide component for better performance
+// Modern Property Card Component
 const PropertySlide = React.memo(function PropertySlide({ 
   property, 
   onNavigate 
@@ -276,8 +304,8 @@ const PropertySlide = React.memo(function PropertySlide({
     return property.image_url || 
            (property.image_urls && property.image_urls[0]) || 
            (property.images && property.images[0]) || 
-           `https://via.placeholder.com/800x400?text=${encodeURIComponent(property.title || 'Property')}`;
-  }, [property.image_url, property.image_urls, property.images, property.title]);
+           null;
+  }, [property.image_url, property.image_urls, property.images]);
 
   // Memoize location string
   const locationString = useMemo(() => {
@@ -292,7 +320,9 @@ const PropertySlide = React.memo(function PropertySlide({
 
   // Memoize formatted price
   const formattedPrice = useMemo(() => 
-    formatRevenue(property.price || 0),
+    `₹${(property.price || 0) >= 10000000 
+      ? `${((property.price || 0) / 10000000).toFixed(2)} Cr` 
+      : `${((property.price || 0) / 100000).toFixed(2)} L`}`,
     [property.price]
   );
 
@@ -300,64 +330,95 @@ const PropertySlide = React.memo(function PropertySlide({
     onNavigate(property.id);
   }, [property.id, onNavigate]);
 
+  const getInitials = (title: string) => {
+    return title
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <div className="w-full flex-shrink-0">
-      <div className="relative group cursor-pointer" onClick={handleClick}>
-        <div className="aspect-[16/9] relative overflow-hidden rounded-lg">
-          <LazyImage
-            src={imageUrl}
-            alt={property.title || "Property"}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="text-xl font-bold mb-2">
-                  {property.title || "Untitled Property"}
-                </h4>
-                <p className="text-sm text-white/90 mb-3 flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {locationString}
-                </p>
-                <div className="flex items-center gap-4 text-sm text-white/80">
-                  {property.bedrooms && (
-                    <span>{property.bedrooms} Beds</span>
-                  )}
-                  {property.bathrooms && (
-                    <span>{property.bathrooms} Baths</span>
-                  )}
-                  {property.area_sqft && (
-                    <span>{property.area_sqft.toLocaleString()} sqft</span>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">
-                  {formattedPrice}
-                </p>
-                <div className="flex gap-2 mt-2 justify-end">
-                  {property.status && (
-                    <Badge className={cn(
-                      "capitalize",
-                      property.status === "active" && "bg-green-500/20 text-green-300 border-green-500/30",
-                      property.status === "sold" && "bg-red-500/20 text-red-300 border-red-500/30",
-                      property.status === "rented" && "bg-blue-500/20 text-blue-300 border-blue-500/30"
-                    )}>
-                      {property.status}
-                    </Badge>
-                  )}
-                  {property.listing_type && (
-                    <Badge className="bg-white/20 text-white border-white/30 capitalize">
-                      For {property.listing_type}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
+    <div className="property-card" onClick={handleClick}>
+      {/* Image Section */}
+      <div className="property-image-container">
+        {imageUrl ? (
+          <>
+            <LazyImage
+              src={imageUrl}
+              alt={property.title || "Property"}
+              className="property-image"
+            />
+            <div className="property-image-overlay" />
+          </>
+        ) : (
+          <div className="property-no-image">
+            <Building2 className="property-no-image-icon" />
+            <span className="property-no-image-text">No Image Available</span>
           </div>
+        )}
+        
+        {/* Badges */}
+        {property.listing_type && (
+          <div className={cn("property-badge", property.listing_type)}>
+            For {property.listing_type}
+          </div>
+        )}
+        
+        {/* Price Tag */}
+        <div className="property-price-tag">
+          {formattedPrice}
+        </div>
+      </div>
+
+      {/* Content Section - Overlaid on image */}
+      <div className="property-content">
+        {/* Header */}
+        <div className="property-header">
+          <h3 className="property-title">
+            {property.title || "Premium Property"}
+          </h3>
+          <div className="property-location">
+            <MapPin className="property-location-icon" />
+            <span>{locationString}</span>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="property-features">
+          {property.bedrooms && (
+            <div className="property-feature">
+              <Bed className="property-feature-icon" />
+              <span>
+                <span className="property-feature-value">{property.bedrooms}</span> Beds
+              </span>
+            </div>
+          )}
+          {property.bathrooms && (
+            <div className="property-feature">
+              <Bath className="property-feature-icon" />
+              <span>
+                <span className="property-feature-value">{property.bathrooms}</span> Baths
+              </span>
+            </div>
+          )}
+          {property.area_sqft && (
+            <div className="property-feature">
+              <Square className="property-feature-icon" />
+              <span>
+                <span className="property-feature-value">{property.area_sqft.toLocaleString()}</span> sqft
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* Action Button */}
+        <div className="property-action">
+          <button className="property-button">
+            View Details
+            <ArrowRight className="property-button-icon" />
+          </button>
         </div>
       </div>
     </div>
@@ -367,6 +428,7 @@ const PropertySlide = React.memo(function PropertySlide({
 function Dashboard() {
   const navigate = useNavigate();
   const [currentPropertyIndex, setCurrentPropertyIndex] = useState(0);
+  const [visibleCards] = useState(3); // Show 3 cards at a time
 
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -407,39 +469,37 @@ function Dashboard() {
 
   const handlePreviousProperty = useCallback(() => {
     setCurrentPropertyIndex((prev) => 
-      prev === 0 ? recentProperties.length - 1 : prev - 1
+      prev === 0 ? Math.max(0, recentProperties.length - visibleCards) : Math.max(0, prev - 1)
     );
-  }, [recentProperties.length]);
+  }, [recentProperties.length, visibleCards]);
 
   const handleNextProperty = useCallback(() => {
     setCurrentPropertyIndex((prev) => 
-      (prev + 1) % recentProperties.length
+      prev >= recentProperties.length - visibleCards ? 0 : prev + 1
     );
-  }, [recentProperties.length]);
+  }, [recentProperties.length, visibleCards]);
 
-  const handleDotClick = useCallback((index: number) => {
-    setCurrentPropertyIndex(index);
-  }, []);
 
-  // Memoized KPI values with proper ordering
-  const kpiValues = useMemo(() => ({
-    revenue: metrics ? formatRevenue(metrics.revenueThisMonth) : "...",
-    activeProperties: metrics ? `${metrics.activeListings}` : "...",
-    leadsToday: metrics ? `${metrics.leadsToday}` : "...",
-    totalProperties: metrics ? `${metrics.totalProperties}` : "...",
-  }), [metrics]);
+  // Memoized KPI values with proper ordering and changes
+  const kpiValues = useMemo(() => {
+    // Calculate percentage changes (mock data for now)
+    const revenueChange = 12.5;
+    const activeChange = -3.2;
+    const leadsChange = 28.4;
+    const totalChange = 5.7;
+    
+    return {
+      revenue: metrics ? `₹${(metrics.revenueThisMonth / 1000).toFixed(1)}K` : "₹0K",
+      activeProperties: metrics ? `${metrics.activeListings}` : "0",
+      leadsToday: metrics ? `${metrics.leadsToday}` : "0",
+      totalProperties: metrics ? `${metrics.totalProperties}` : "0",
+      revenueChange,
+      activeChange,
+      leadsChange,
+      totalChange
+    };
+  }, [metrics]);
 
-  // Memoized rendered properties for slideshow
-  const renderedProperties = useMemo(() => 
-    recentProperties.map((property: Property) => (
-      <PropertySlide
-        key={property.id}
-        property={property}
-        onNavigate={handlePropertyNavigation}
-      />
-    )),
-    [recentProperties, handlePropertyNavigation]
-  );
 
   // Memoized rendered agents with empty state
   const renderedAgents = useMemo(() => {
@@ -510,27 +570,39 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards - Reordered as per requirements */}
-      <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
+      {/* KPI Cards - Modern Design */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Revenue This Month"
           value={kpiValues.revenue}
           icon={IndianRupee}
+          change={kpiValues.revenueChange}
+          period="vs last month"
+          cardType="revenue"
         />
         <KpiCard
           title="Active Properties"
           value={kpiValues.activeProperties}
           icon={Building2}
+          change={kpiValues.activeChange}
+          period="vs last month"
+          cardType="active"
         />
         <KpiCard
           title="Leads Today"
           value={kpiValues.leadsToday}
           icon={Users}
+          change={kpiValues.leadsChange}
+          period="vs yesterday"
+          cardType="leads"
         />
         <KpiCard
           title="Total Properties"
           value={kpiValues.totalProperties}
           icon={TrendingUp}
+          change={kpiValues.totalChange}
+          period="vs last month"
+          cardType="properties"
         />
       </div>
 
@@ -583,58 +655,69 @@ function Dashboard() {
             </div>
             
             {loadingProperties ? (
-              <div className="flex items-center justify-center h-64">
-                <Skeleton className="w-full h-full rounded-lg" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-[400px] rounded-2xl" />
+                ))}
               </div>
             ) : recentProperties.length > 0 ? (
-              <div className="relative">
-                {/* Navigation Buttons */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm shadow-lg hover:bg-background/90 rounded-full"
-                  onClick={handlePreviousProperty}
-                  disabled={recentProperties.length <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm shadow-lg hover:bg-background/90 rounded-full"
-                  onClick={handleNextProperty}
-                  disabled={recentProperties.length <= 1}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+              <div className="property-carousel-container">
+                {/* Carousel Navigation Buttons */}
+                {recentProperties.length > 3 && (
+                  <>
+                    <button
+                      className="carousel-nav-button prev"
+                      onClick={handlePreviousProperty}
+                      disabled={currentPropertyIndex === 0}
+                    >
+                      <ChevronLeft className="carousel-nav-icon" />
+                    </button>
+                    
+                    <button
+                      className="carousel-nav-button next"
+                      onClick={handleNextProperty}
+                      disabled={currentPropertyIndex >= recentProperties.length - 3}
+                    >
+                      <ChevronRight className="carousel-nav-icon" />
+                    </button>
+                  </>
+                )}
 
-                {/* Property Slideshow */}
-                <div className="overflow-hidden rounded-lg">
+                {/* Property Cards Carousel */}
+                <div className="property-carousel-wrapper">
                   <div 
-                    className="flex transition-transform duration-500 ease-in-out"
-                    style={{ transform: `translateX(-${currentPropertyIndex * 100}%)` }}
+                    className="property-carousel-track"
+                    style={{ 
+                      transform: `translateX(-${currentPropertyIndex * (33.333 + 1.5)}%)` 
+                    }}
                   >
-                    {renderedProperties}
+                    {recentProperties.map((property: Property) => (
+                      <div key={property.id} className="property-carousel-item">
+                        <PropertySlide
+                          property={property}
+                          onNavigate={handlePropertyNavigation}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 {/* Dots Indicator */}
-                <div className="flex justify-center gap-2 mt-4">
-                  {recentProperties.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleDotClick(index)}
-                      className={cn(
-                        "w-2 h-2 rounded-full transition-all duration-300",
-                        currentPropertyIndex === index
-                          ? "bg-primary w-8"
-                          : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-                      )}
-                      aria-label={`Go to property ${index + 1}`}
-                    />
-                  ))}
-                </div>
+                {recentProperties.length > 3 && (
+                  <div className="carousel-dots">
+                    {Array.from({ length: Math.max(1, recentProperties.length - 2) }, (_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentPropertyIndex(index)}
+                        className={cn(
+                          "carousel-dot",
+                          currentPropertyIndex === index && "active"
+                        )}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -678,6 +761,7 @@ function Dashboard() {
               <Button
                 variant="outline"
                 className="flex flex-col items-center justify-center gap-1 sm:gap-2 h-16 sm:h-20 md:h-24 p-2"
+                onClick={() => navigate("/messages")}
               >
                 <Send className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-[10px] sm:text-xs text-center">WhatsApp</span>
@@ -685,6 +769,7 @@ function Dashboard() {
               <Button
                 variant="outline"
                 className="flex flex-col items-center justify-center gap-1 sm:gap-2 h-16 sm:h-20 md:h-24 p-2"
+                onClick={() => navigate("/calendar")}
               >
                 <CalendarCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-[10px] sm:text-xs text-center">Schedule</span>
@@ -692,6 +777,7 @@ function Dashboard() {
               <Button
                 variant="outline"
                 className="flex flex-col items-center justify-center gap-1 sm:gap-2 h-16 sm:h-20 md:h-24 p-2"
+                onClick={() => navigate("/calendar")}
               >
                 <PlusCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-[10px] sm:text-xs text-center">Add Task</span>
@@ -699,6 +785,7 @@ function Dashboard() {
               <Button
                 variant="outline"
                 className="flex flex-col items-center justify-center gap-1 sm:gap-2 h-16 sm:h-20 md:h-24 p-2"
+                onClick={() => navigate("/analytics")}
               >
                 <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="text-[10px] sm:text-xs text-center">Report</span>

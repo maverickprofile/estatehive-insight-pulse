@@ -1,0 +1,83 @@
+/* Analytics Charts Dark Mode Support */
+
+/* Recharts text elements in dark mode */
+.dark .recharts-text {
+  fill: hsl(var(--foreground));
+}
+
+.dark .recharts-cartesian-axis-tick-value {
+  fill: hsl(var(--muted-foreground));
+}
+
+.dark .recharts-legend-item-text {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.dark .recharts-label {
+  fill: hsl(var(--foreground));
+}
+
+.dark .recharts-pie-label-text {
+  fill: hsl(var(--foreground));
+}
+
+.dark .recharts-radial-bar-label {
+  fill: hsl(var(--foreground));
+}
+
+/* Light mode explicit settings */
+.light .recharts-text,
+.recharts-text {
+  fill: hsl(var(--foreground));
+}
+
+.light .recharts-cartesian-axis-tick-value,
+.recharts-cartesian-axis-tick-value {
+  fill: hsl(var(--muted-foreground));
+}
+
+.light .recharts-legend-item-text,
+.recharts-legend-item-text {
+  fill: hsl(var(--foreground)) !important;
+}
+
+/* Tooltip dark mode */
+.dark .recharts-tooltip-wrapper {
+  filter: none;
+}
+
+/* Grid lines */
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line {
+  stroke: hsl(var(--border));
+  opacity: 0.3;
+}
+
+/* Polar grid */
+.dark .recharts-polar-grid-angle line,
+.dark .recharts-polar-grid-concentric-circle,
+.dark .recharts-polar-grid-concentric-polygon {
+  stroke: hsl(var(--border));
+  opacity: 0.3;
+}
+
+/* Reference lines */
+.dark .recharts-reference-line line {
+  stroke: hsl(var(--muted-foreground));
+}
+
+/* Active dot */
+.dark .recharts-active-dot {
+  fill: hsl(var(--primary));
+}
+
+/* Brush */
+.dark .recharts-brush {
+  fill: hsl(var(--muted));
+  fill-opacity: 0.2;
+}
+
+/* Cross hair */
+.dark .recharts-cross {
+  stroke: hsl(var(--muted-foreground));
+}

@@ -97,97 +97,97 @@ export default function SettingsPage() {
   const [smsNotifications, setSmsNotifications] = useState(false);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your account, team, and application preferences</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Settings</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your account, team, and application preferences</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="metric-card">
-        <div className="flex border-b border-border">
+        <div className="flex overflow-x-auto border-b border-border scrollbar-hide">
           <button
             onClick={() => setActiveTab("team")}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "team"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Users className="w-4 h-4 mr-2 inline" />
-            Team Management
+            <Users className="w-4 h-4 mr-1 sm:mr-2 inline" />
+            <span className="text-sm sm:text-base">Team</span>
           </button>
           <button
             onClick={() => setActiveTab("notifications")}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "notifications"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Bell className="w-4 h-4 mr-2 inline" />
-            Notifications
+            <Bell className="w-4 h-4 mr-1 sm:mr-2 inline" />
+            <span className="text-sm sm:text-base">Notifications</span>
           </button>
           <button
             onClick={() => setActiveTab("security")}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "security"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Lock className="w-4 h-4 mr-2 inline" />
-            Security
+            <Lock className="w-4 h-4 mr-1 sm:mr-2 inline" />
+            <span className="text-sm sm:text-base">Security</span>
           </button>
           <button
             onClick={() => setActiveTab("general")}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+            className={`px-3 sm:px-6 py-2 sm:py-3 font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "general"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            <SettingsIcon className="w-4 h-4 mr-2 inline" />
-            General
+            <SettingsIcon className="w-4 h-4 mr-1 sm:mr-2 inline" />
+            <span className="text-sm sm:text-base">General</span>
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Team Management Tab */}
           {activeTab === "team" && <TeamManagement />}
 
           {/* Notifications Tab */}
           {activeTab === "notifications" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Notification Preferences</h3>
-                <p className="text-sm text-muted-foreground">Configure how you receive notifications</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">Notification Preferences</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Configure how you receive notifications</p>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-foreground">Push Notifications</h4>
-                    <p className="text-sm text-muted-foreground">Receive push notifications in your browser</p>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border border-border rounded-lg gap-3">
+                  <div className="flex-1">
+                    <h4 className="text-sm sm:text-base font-medium text-foreground">Push Notifications</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Receive push notifications in your browser</p>
                   </div>
                   <Switch checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
                 </div>
 
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-foreground">Email Notifications</h4>
-                    <p className="text-sm text-muted-foreground">Get notified via email about important updates</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border border-border rounded-lg gap-3">
+                  <div className="flex-1">
+                    <h4 className="text-sm sm:text-base font-medium text-foreground">Email Notifications</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Get notified via email about important updates</p>
                   </div>
                   <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
                 </div>
 
-                <div className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div>
-                    <h4 className="font-medium text-foreground">SMS Notifications</h4>
-                    <p className="text-sm text-muted-foreground">Receive SMS alerts for urgent matters</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 border border-border rounded-lg gap-3">
+                  <div className="flex-1">
+                    <h4 className="text-sm sm:text-base font-medium text-foreground">SMS Notifications</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Receive SMS alerts for urgent matters</p>
                   </div>
                   <Switch checked={smsNotifications} onCheckedChange={setSmsNotifications} />
                 </div>
@@ -197,36 +197,36 @@ export default function SettingsPage() {
 
           {/* Security Tab */}
           {activeTab === "security" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Security Settings</h3>
-                <p className="text-sm text-muted-foreground">Manage your account security and authentication</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">Security Settings</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Manage your account security and authentication</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">Change Password</h4>
-                  <div className="space-y-3">
-                    <Input type="password" placeholder="Current password" />
-                    <Input type="password" placeholder="New password" />
-                    <Input type="password" placeholder="Confirm new password" />
-                    <Button className="w-full">Update Password</Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium text-foreground">Change Password</h4>
+                  <div className="space-y-2 sm:space-y-3">
+                    <Input type="password" placeholder="Current password" className="text-sm" />
+                    <Input type="password" placeholder="New password" className="text-sm" />
+                    <Input type="password" placeholder="Confirm new password" className="text-sm" />
+                    <Button className="w-full text-sm sm:text-base">Update Password</Button>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">Two-Factor Authentication</h4>
-                  <div className="p-4 border border-border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium">2FA Status</span>
-                      <Badge variant="secondary" className="bg-destructive text-destructive-foreground">
+                <div className="space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium text-foreground">Two-Factor Authentication</h4>
+                  <div className="p-3 sm:p-4 border border-border rounded-lg">
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <span className="text-xs sm:text-sm font-medium">2FA Status</span>
+                      <Badge variant="secondary" className="bg-destructive text-destructive-foreground text-xs">
                         Disabled
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-4">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                       Add an extra layer of security to your account
                     </p>
-                    <Button variant="outline" className="w-full">Enable 2FA</Button>
+                    <Button variant="outline" className="w-full text-sm sm:text-base">Enable 2FA</Button>
                   </div>
                 </div>
               </div>
@@ -235,30 +235,30 @@ export default function SettingsPage() {
 
           {/* General Tab */}
           {activeTab === "general" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">General Settings</h3>
-                <p className="text-sm text-muted-foreground">Configure general application preferences</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">General Settings</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">Configure general application preferences</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">Company Information</h4>
-                  <div className="space-y-3">
-                    <Input placeholder="Company Name" defaultValue="Estate CRM" />
-                    <Input placeholder="Company Address" defaultValue="Mumbai, Maharashtra" />
-                    <Input placeholder="Contact Number" defaultValue="+91 98765 43210" />
-                    <Input placeholder="Email" defaultValue="info@estate.com" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium text-foreground">Company Information</h4>
+                  <div className="space-y-2 sm:space-y-3">
+                    <Input placeholder="Company Name" defaultValue="Estate CRM" className="text-sm" />
+                    <Input placeholder="Company Address" defaultValue="Mumbai, Maharashtra" className="text-sm" />
+                    <Input placeholder="Contact Number" defaultValue="+91 98765 43210" className="text-sm" />
+                    <Input placeholder="Email" defaultValue="info@estate.com" className="text-sm" />
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground">Application Preferences</h4>
-                  <div className="space-y-3">
+                <div className="space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium text-foreground">Application Preferences</h4>
+                  <div className="space-y-2 sm:space-y-3">
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Currency</label>
+                      <label className="text-xs sm:text-sm font-medium text-foreground mb-1 sm:mb-2 block">Currency</label>
                       <Select defaultValue="inr">
-                        <SelectTrigger>
+                        <SelectTrigger className="text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -269,9 +269,9 @@ export default function SettingsPage() {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Time Zone</label>
+                      <label className="text-xs sm:text-sm font-medium text-foreground mb-1 sm:mb-2 block">Time Zone</label>
                       <Select defaultValue="ist">
-                        <SelectTrigger>
+                        <SelectTrigger className="text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -282,9 +282,9 @@ export default function SettingsPage() {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-2 block">Language</label>
+                      <label className="text-xs sm:text-sm font-medium text-foreground mb-1 sm:mb-2 block">Language</label>
                       <Select defaultValue="en">
-                        <SelectTrigger>
+                        <SelectTrigger className="text-sm">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -297,8 +297,8 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-border">
-                <Button className="bg-gradient-to-r from-primary to-primary/90">
+              <div className="pt-3 sm:pt-4 border-t border-border">
+                <Button className="bg-gradient-to-r from-primary to-primary/90 w-full sm:w-auto text-sm sm:text-base">
                   Save Changes
                 </Button>
               </div>

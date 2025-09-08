@@ -62,7 +62,11 @@ import {
   WifiOff,
   Search,
   List,
-  FileAudio
+  FileAudio,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 import WorkflowCanvas from '@/components/workflow/WorkflowCanvas';
 import NodeLibrary from '@/components/workflow/NodeLibrary';
@@ -410,6 +414,7 @@ export default function VoiceToCRM() {
   const [allVoiceNotes, setAllVoiceNotes] = useState<any[]>([]);
   const [voiceNotesFilter, setVoiceNotesFilter] = useState('');
   const [realtimeLogs, setRealtimeLogs] = useState<any[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
   const [stats, setStats] = useState({
     totalTranscriptions: 0,
     todayTranscriptions: 0,
@@ -427,6 +432,7 @@ export default function VoiceToCRM() {
   const [transcriptionMethod, setTranscriptionMethod] = useState<'web-speech' | 'openai'>('web-speech');
   const [isTranscribing, setIsTranscribing] = useState(false);
 
+  // Workflow store
   const {
     nodes,
     edges,
@@ -440,6 +446,16 @@ export default function VoiceToCRM() {
   } = useWorkflowStore();
 
   // Initialize services on mount
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     // Add welcome log
     addRealtimeLog({
@@ -1436,6 +1452,93 @@ export default function VoiceToCRM() {
     }
   };
 
+  // Show desktop-only message on mobile devices
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-50/5 dark:to-purple-950/10 flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 h-20 w-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
+              <div className="h-full w-full rounded-full bg-background flex items-center justify-center">
+                <Mic className="h-10 w-10 text-purple-600" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Desktop Only Feature</CardTitle>
+            <CardDescription className="mt-2">
+              Voice-to-CRM Logger requires a desktop computer
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Why Desktop Only?</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p>The Voice-to-CRM Logger includes:</p>
+                <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
+                  <li>Visual workflow builder with drag-and-drop</li>
+                  <li>Complex node configuration panels</li>
+                  <li>Real-time transcription monitoring</li>
+                  <li>Multi-panel dashboard views</li>
+                </ul>
+                <p className="mt-3">These features require a larger screen and mouse interaction for the best experience.</p>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-3">
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-500" />
+                  Access on Desktop
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Please access this feature from a desktop or laptop computer with a screen width of at least 768px.
+                </p>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4 text-green-500" />
+                  Mobile Alternatives
+                </h4>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Use WhatsApp or Telegram bots for voice notes on mobile</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>View transcription history in the CRM mobile app</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span>Configure basic settings from mobile dashboard</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button 
+                className="w-full" 
+                onClick={() => navigate('/ai-tools')}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to AI Tools
+              </Button>
+              <Button 
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate('/')}
+              >
+                Go to Dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1543,47 +1646,86 @@ export default function VoiceToCRM() {
 
           {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {/* Statistics Cards */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Transcriptions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalTranscriptions}</div>
-                  <p className="text-xs text-muted-foreground">All time voice notes</p>
-                </CardContent>
-              </Card>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">
+              {/* Statistics Cards - Ads Manager Style */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                      <FileAudio className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <Badge className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border-0">
+                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                      12%
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs lg:text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Total Transcriptions</p>
+                    <p className="text-2xl lg:text-3xl font-bold mt-1 text-black dark:text-white">{stats.totalTranscriptions}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">All time voice notes</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Today's Activity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.todayTranscriptions}</div>
-                  <p className="text-xs text-muted-foreground">Voice notes today</p>
-                </CardContent>
-              </Card>
+              {/* Today's Activity Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                      <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <Badge className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border-0">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Active
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs lg:text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Today's Activity</p>
+                    <p className="text-2xl lg:text-3xl font-bold mt-1 text-black dark:text-white">{stats.todayTranscriptions}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">Voice notes today</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Average Duration</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{Math.round(stats.averageDuration)}s</div>
-                  <p className="text-xs text-muted-foreground">Per recording</p>
-                </CardContent>
-              </Card>
+              {/* Average Duration Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-green-100 dark:bg-green-900/30">
+                      <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <Badge className="bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 font-bold border-0">
+                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                      5%
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs lg:text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Average Duration</p>
+                    <p className="text-2xl lg:text-3xl font-bold mt-1 text-black dark:text-white">{Math.round(stats.averageDuration)}s</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">Per recording</p>
+                  </div>
+                </div>
+              </div>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.successRate.toFixed(1)}%</div>
-                  <p className="text-xs text-muted-foreground">Processing success</p>
-                </CardContent>
-              </Card>
+              {/* Success Rate Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                      <CheckCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <Badge className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border-0">
+                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                      98%
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs lg:text-sm font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Success Rate</p>
+                    <p className="text-2xl lg:text-3xl font-bold mt-1 text-black dark:text-white">{stats.successRate.toFixed(1)}%</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">Processing success</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -2307,49 +2449,77 @@ export default function VoiceToCRM() {
               </CardContent>
             </Card>
 
-            {/* Approval Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Auto-Approved Today</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.todayTranscriptions || 0}
+            {/* Approval Statistics - Ads Manager Style */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Auto-Approved Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-green-100 dark:bg-green-900/30">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <Badge className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border-0 text-xs">
+                      Auto
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    High confidence actions
-                  </p>
-                </CardContent>
-              </Card>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Auto-Approved Today</p>
+                    <p className="text-2xl font-bold mt-1 text-black dark:text-white">
+                      {stats.todayTranscriptions || 0}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                      High confidence actions
+                    </p>
+                  </div>
+                </div>
+              </div>
               
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {pendingDecisions.length}
+              {/* Pending Review Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 font-bold border-0 text-xs">
+                      {pendingDecisions.length}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Awaiting approval
-                  </p>
-                </CardContent>
-              </Card>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Pending Review</p>
+                    <p className="text-2xl font-bold mt-1 text-black dark:text-white">
+                      {pendingDecisions.length}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                      Awaiting approval
+                    </p>
+                  </div>
+                </div>
+              </div>
               
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.successRate.toFixed(0)}%
+              {/* Success Rate Card */}
+              <div className="stats-card group">
+                <div className="relative p-4 lg:p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                      <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <Badge className="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 font-bold border-0 text-xs">
+                      <ArrowUpRight className="h-3 w-3 mr-1" />
+                      High
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Approved actions
-                  </p>
-                </CardContent>
-              </Card>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Success Rate</p>
+                    <p className="text-2xl font-bold mt-1 text-black dark:text-white">
+                      {stats.successRate.toFixed(0)}%
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                      Approved actions
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

@@ -1,0 +1,175 @@
+/* Modern Campaign Card Styles */
+.modern-campaign-card {
+  @apply relative rounded-lg p-4 transition-all duration-300 hover:shadow-lg;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  max-width: 100%;
+}
+
+.dark .modern-campaign-card {
+  background: #1f2937;
+  border: 1px solid #374151;
+}
+
+.modern-campaign-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Card Header */
+.campaign-card-header {
+  @apply flex items-start justify-between mb-3;
+}
+
+.campaign-card-logo {
+  @apply w-10 h-10 rounded-lg flex items-center justify-center;
+  background: #f3f4f6;
+}
+
+.dark .campaign-card-logo {
+  background: #111827;
+}
+
+.campaign-card-badge {
+  @apply px-2 py-1 rounded text-xs font-medium;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.dark .campaign-card-badge {
+  background: #374151;
+  color: #9ca3af;
+}
+
+/* Card Content */
+.campaign-card-title {
+  @apply text-base font-semibold mb-1;
+  color: #111827;
+}
+
+.dark .campaign-card-title {
+  color: #f9fafb;
+}
+
+.campaign-card-subtitle {
+  @apply text-xs text-gray-500 mb-3;
+}
+
+.dark .campaign-card-subtitle {
+  color: #9ca3af;
+}
+
+/* Features List */
+.campaign-features {
+  @apply flex flex-wrap gap-2 mb-3;
+}
+
+.campaign-feature-tag {
+  @apply px-2.5 py-1 rounded-md text-xs font-medium;
+  background: #f9fafb;
+  color: #4b5563;
+}
+
+.dark .campaign-feature-tag {
+  background: #111827;
+  color: #d1d5db;
+}
+
+/* Progress Section */
+.campaign-progress {
+  @apply mb-3;
+}
+
+.campaign-progress-bar {
+  @apply relative h-1.5 rounded-full overflow-hidden;
+  background: #f3f4f6;
+}
+
+.dark .campaign-progress-bar {
+  background: #374151;
+}
+
+.campaign-progress-fill {
+  @apply absolute top-0 left-0 h-full rounded-full transition-all duration-500;
+}
+
+.campaign-progress-text {
+  @apply text-xs text-gray-500 mt-1.5 flex items-center justify-between;
+}
+
+.dark .campaign-progress-text {
+  color: #9ca3af;
+}
+
+/* Action Button */
+.campaign-action-btn {
+  @apply w-full py-2 px-4 rounded-md text-sm font-medium transition-all duration-200;
+  background: #111827;
+  color: white;
+}
+
+.campaign-action-btn:hover {
+  background: #1f2937;
+}
+
+.dark .campaign-action-btn {
+  background: #374151;
+}
+
+.dark .campaign-action-btn:hover {
+  background: #4b5563;
+}
+
+.campaign-action-btn:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  background: #9ca3af;
+}
+
+/* Platform Specific Colors */
+.campaign-card-meta .campaign-card-logo {
+  background: #e7f3ff;
+}
+
+.campaign-card-meta .campaign-progress-fill {
+  background: #1877f2;
+}
+
+.campaign-card-google .campaign-card-logo {
+  background: #e8f5e9;
+}
+
+.campaign-card-google .campaign-progress-fill {
+  background: #34a853;
+}
+
+.campaign-card-instagram .campaign-card-logo {
+  background: #fce4ec;
+}
+
+.campaign-card-instagram .campaign-progress-fill {
+  background: linear-gradient(90deg, #f58529, #dd2a7b, #8134af);
+}
+
+.campaign-card-youtube .campaign-card-logo {
+  background: #ffebee;
+}
+
+.campaign-card-youtube .campaign-progress-fill {
+  background: #ff0000;
+}
+
+.campaign-card-linkedin .campaign-card-logo {
+  background: #e3f2fd;
+}
+
+.campaign-card-linkedin .campaign-progress-fill {
+  background: #0077b5;
+}
+
+.campaign-card-email .campaign-card-logo {
+  background: #ede7f6;
+}
+
+.campaign-card-email .campaign-progress-fill {
+  background: #673ab7;
+}

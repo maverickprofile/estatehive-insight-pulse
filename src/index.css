@@ -322,6 +322,16 @@
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   }
   
+  /* Collapsed sidebar specific styles */
+  .sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: var(--spacing-sm);
+  }
+  
+  .sidebar-collapsed .nav-link.active::before {
+    display: none;
+  }
+  
   /* Empty State Component */
   .empty-state {
     @apply flex flex-col items-center justify-center text-center;

@@ -248,7 +248,7 @@ export default function Messages() {
           
           {/* Inbox header */}
           <div className="flex items-center px-3 sm:px-4 py-2">
-            <h1 className="text-lg sm:text-xl font-bold">Inbox</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-black dark:text-white">Inbox</h1>
           </div>
           <Separator />
           

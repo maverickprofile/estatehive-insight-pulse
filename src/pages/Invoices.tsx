@@ -17,7 +17,7 @@ import {
   Trash2, 
   Send, 
   CheckCircle,
-  DollarSign,
+  IndianRupee,
   Clock,
   AlertCircle
 } from "lucide-react";
@@ -176,7 +176,7 @@ export default function InvoicesPage() {
                     <div className="metric-card p-3 sm:p-4">
                         <div className="flex items-center gap-2 sm:gap-3">
                             <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg">
-                                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                                <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-xs sm:text-sm text-muted-foreground">Total Revenue</p>
@@ -372,7 +372,7 @@ export default function InvoicesPage() {
                                                 </div>
                                             )}
                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <DollarSign className="w-3 h-3 flex-shrink-0" />
+                                                <IndianRupee className="w-3 h-3 flex-shrink-0" />
                                                 <span>₹{invoice.total_amount?.toLocaleString() || '0'}</span>
                                             </div>
                                             {invoice.due_date && (

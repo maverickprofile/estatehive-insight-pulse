@@ -131,7 +131,7 @@ export default function MessagesNew() {
           </div>
 
           {/* Title */}
-          <h2 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold mb-2 text-black dark:text-white">
             Messages
           </h2>
           <p className="text-base text-muted-foreground mb-1">Coming Soon</p>
@@ -177,7 +177,7 @@ export default function MessagesNew() {
           <div className="p-4 md:p-6 border-b border-border/50">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl md:text-3xl font-bold text-black dark:text-white">
                   Messages
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">Unified communication hub</p>
@@ -284,7 +284,7 @@ export default function MessagesNew() {
               </div>
 
               {/* Title */}
-              <h2 className="text-2xl md:text-4xl font-bold mb-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
+              <h2 className="text-2xl md:text-4xl font-bold mb-3 text-black dark:text-white">
                 Unified Messaging Hub
               </h2>
               <p className="text-base md:text-lg text-muted-foreground mb-2">

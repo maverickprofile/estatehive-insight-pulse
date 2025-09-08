@@ -26,6 +26,7 @@ const AddPropertyLayout = lazy(() => import("./pages/AddPropertyLayout"));
 const PropertyDetailsLayout = lazy(() => import("./pages/PropertyDetailsLayout"));
 const LeadsLayout = lazy(() => import("./pages/LeadsLayout"));
 const CreateLeadLayout = lazy(() => import("./pages/CreateLeadLayout"));
+const LeadDetailLayout = lazy(() => import("./pages/LeadDetailLayout"));
 const ClientsLayout = lazy(() => import("./pages/ClientsLayout"));
 const CreateClientLayout = lazy(() => import("./pages/CreateClientLayout"));
 const ClientDetailsLayout = lazy(() => import("./pages/ClientDetailsLayout"));
@@ -121,6 +122,7 @@ const App = () => {
                   <Route path="/properties/:id" element={<PropertyDetailsLayout />} />
                   <Route path="/leads" element={<LeadsLayout />} />
                   <Route path="/leads/new" element={<CreateLeadLayout />} />
+                  <Route path="/leads/:id" element={<LeadDetailLayout />} />
                   
                   {/* Client Routes */}
                   <Route path="/clients" element={<ClientsLayout />} />

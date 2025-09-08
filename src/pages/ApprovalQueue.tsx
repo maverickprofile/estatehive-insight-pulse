@@ -276,20 +276,23 @@ export default function ApprovalQueue() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Approval Queue</h1>
-          <p className="text-muted-foreground">
-            Manage and review pending CRM action approvals
-          </p>
+    <div className="w-full h-full overflow-y-auto bg-gradient-to-br from-background via-background to-purple-50/5 dark:to-purple-950/10">
+      <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Approval Queue
+            </h1>
+            <p className="text-muted-foreground">
+              Manage and review pending CRM action approvals
+            </p>
+          </div>
+          <Button onClick={loadApprovalRequests} variant="outline">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button onClick={loadApprovalRequests} variant="outline">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
 
       {/* Statistics Cards */}
       {statistics && (
@@ -577,6 +580,7 @@ export default function ApprovalQueue() {
           currentUserId={currentUserId}
         />
       )}
+      </div>
     </div>
   );
 }
