@@ -156,13 +156,13 @@ interface Property {
 // Helper functions for status and furnishing
 const getStatusBadge = (status?: string) => {
   const statusConfig: Record<string, { label: string; color: string }> = {
-    draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
-    active: { label: "Active", color: "bg-green-100 text-green-700" },
-    pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-    under_contract: { label: "Under Contract", color: "bg-orange-100 text-orange-700" },
-    sold: { label: "Sold", color: "bg-blue-100 text-blue-700" },
-    rented: { label: "Rented", color: "bg-purple-100 text-purple-700" },
-    inactive: { label: "Inactive", color: "bg-gray-100 text-gray-500" }
+    draft: { label: "Draft", color: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300" },
+    active: { label: "Active", color: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400" },
+    pending: { label: "Pending", color: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400" },
+    under_contract: { label: "Under Contract", color: "bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400" },
+    sold: { label: "Sold", color: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400" },
+    rented: { label: "Rented", color: "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400" },
+    inactive: { label: "Inactive", color: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" }
   };
   return statusConfig[status || 'active'] || statusConfig.active;
 };
@@ -180,10 +180,10 @@ const getCategoryBadge = (category?: string, saleType?: string | null) => {
   const categoryConfig: Record<string, { label: string; color: string }> = {
     sale: { 
       label: saleType === 'new' ? "For Sale (New)" : saleType === 'resale' ? "For Sale (Resale)" : "For Sale", 
-      color: "bg-blue-100 text-blue-700" 
+      color: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400" 
     },
-    rent: { label: "For Rent", color: "bg-green-100 text-green-700" },
-    lease: { label: "For Leasing", color: "bg-purple-100 text-purple-700" }
+    rent: { label: "For Rent", color: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400" },
+    lease: { label: "For Leasing", color: "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-400" }
   };
   return categoryConfig[category || 'sale'] || categoryConfig.sale;
 };
@@ -703,7 +703,7 @@ export default function PropertyDetailsPage() {
                                             value={propertyData?.status || 'draft'} 
                                             onValueChange={(value) => handleSelectChange('status', value)}
                                         >
-                                            <SelectTrigger className="w-40 bg-white/90 backdrop-blur">
+                                            <SelectTrigger className="w-40 bg-white/90 dark:bg-gray-800/90 backdrop-blur">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
